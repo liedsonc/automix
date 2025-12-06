@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    --primary: #004CFF;
+    --primary-light: #D9E4FF;
+
+    --black: #202020;
+    --white: #fff;
+    --red: #FF5790;
+
+    --text-white: #F3F3F3;
+    --text-dark: #202020;
+    --text-promotion: #F1AEAE;
+
+    --order-processing: #3498DB;
+    --order-packed: #00BCD4;
+    --order-dispatched: #009688;
+    --order-on-the-way: #A2C34A;
+    --order-delivered: #17BE5A;
+    --order-canceled: #EB001B;
+    --order-returned: #FF5F00;
+}
+
+body {
+    @apply bg-white text-gray-900;
+}
