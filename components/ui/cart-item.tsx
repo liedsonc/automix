@@ -60,7 +60,7 @@ const StyledCartItemDeleteButton = forwardRef<
 >(({ className = '', style, ...props }, ref) => (
 	<Pressable
 		ref={ref}
-		className={`absolute bottom-1 left-1 w-6 h-6 bg-red-500 rounded-full items-center justify-center ${className}`}
+		className={`absolute bottom-1 left-1 w-6 h-6 bg-[color:var(--red)] rounded-full items-center justify-center ${className}`}
 		style={style}
 		{...props}
 	/>
