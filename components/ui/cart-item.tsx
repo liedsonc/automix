@@ -1,7 +1,7 @@
 import { createImage } from '@gluestack-ui/core/image/creator';
 import { createPressable } from '@gluestack-ui/core/pressable/creator';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { forwardRef, type ComponentRef, useState } from 'react';
+import { forwardRef, type ComponentRef, useState, useEffect } from 'react';
 import {
 	Image,
 	Pressable,
@@ -206,6 +206,10 @@ export function CartItem({
 	quantityClassName = '',
 }: CartItemProps) {
 	const [quantity, setQuantity] = useState(initialQuantity);
+
+	useEffect(() => {
+		setQuantity(initialQuantity);
+	}, [initialQuantity]);
 
 	const stockNumber = parseInt(stock.match(/\d+/)?.[0] || '0', 10);
 	const maxQuantity = stockNumber;
