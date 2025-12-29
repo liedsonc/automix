@@ -94,15 +94,17 @@ export function CarCard({
 			</StyledCarCardHeader>
 			<StyledCarCardContent className={contentClassName}>
 				<StyledCarCardDetail className={detailClassName}>
-					Marca: {brand}
+					<Text className='font-bold'>Marca:</Text> {brand}
 				</StyledCarCardDetail>
 				<StyledCarCardDetail className={detailClassName}>
-					Modelo: {model}
+					<Text className='font-bold'>Modelo:</Text> {model}
 				</StyledCarCardDetail>
 				<StyledCarCardDetail className={detailClassName}>
-					Motor: {engine}
+					<Text className='font-bold'>Motor:</Text> {engine}
 				</StyledCarCardDetail>
-				<StyledCarCardDetail className={detailClassName}>Ano: {year}</StyledCarCardDetail>
+				<StyledCarCardDetail className={detailClassName}>
+					<Text className='font-bold'>Ano:</Text> {year}
+				</StyledCarCardDetail>
 			</StyledCarCardContent>
 		</StyledCarCardRoot>
 	);
