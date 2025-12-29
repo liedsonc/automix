@@ -21,7 +21,7 @@ const StyledCartItemRoot = forwardRef<View, WithClassName<ViewProps>>(
 	({ className = '', style, ...props }, ref) => (
 		<View
 			ref={ref}
-			className={`bg-white rounded-lg border border-[color:var(--primary-light)] p-3 flex-row ${className}`}
+			className={`bg-white rounded-lg p-3 flex-row ${className}`}
 			style={style}
 			{...props}
 		/>
