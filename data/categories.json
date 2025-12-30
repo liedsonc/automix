@@ -1,0 +1,12 @@
+[
+  { "id": 1, "name": "Motor", "imageKey": "motor" },
+  { "id": 2, "name": "Embraiagem", "imageKey": "embraiagem" },
+  { "id": 3, "name": "Travões", "imageKey": "travoes" },
+  { "id": 4, "name": "Pneus", "imageKey": "pneus" },
+  { "id": 5, "name": "Bateria", "imageKey": "bateria" },
+  { "id": 6, "name": "Filtros", "imageKey": "filtros" },
+  { "id": 7, "name": "Iluminação", "imageKey": "iluminacao" },
+  { "id": 8, "name": "Suspensão", "imageKey": "suspensao" },
+  { "id": 9, "name": "Ferramentas", "imageKey": "ferramentas" },
+  { "id": 10, "name": "Óleos e Lubrificantes", "imageKey": "oleos" }
+]
