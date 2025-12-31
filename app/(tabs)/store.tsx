@@ -1,34 +1,141 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useState } from 'react';
 import {
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
 
 import { categoryImages, productImages } from '@/constants/images';
 import categories from '@/data/categories.json';
-import products from '@/data/products.json';
-import { useRouter } from 'expo-router';
+import staticProducts from '@/data/products.json';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+type Product = {
+  id: number;
+  name: string;
+  price: number;
+  stock: number;
+  image: string;
+  description?: string;
+  category?: string;
+  showInBestSellers?: boolean;
+  showInNew?: boolean;
+  showInRecommended?: boolean;
+  supplierId?: number;
+  createdAt?: string;
+
+  discount: boolean;
+  discountValue: number; // percentagem
+};
+
+const PRODUCTS_KEY = 'PRODUCTS';
+
+const formatPrice = (value: unknown) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num.toFixed(2) : '—';
+};
+
+const getFinalPrice = (product: Product) => {
+  if (!product.discount) return product.price;
+  return product.price - (product.price * product.discountValue) / 100;
+};
+
+const normalizeProduct = (product: any): Product => {
+  const price = Number(product.price ?? 0);
+  const stock = Number(product.stock ?? 0);
+  const rawDiscount = Number(product.discountValue ?? product.discount ?? 0);
+  const hasDiscount = Boolean(product.discount ?? product.promotion) && rawDiscount > 0;
+
+  return {
+    id: Number(product.id),
+    name: String(product.name ?? ''),
+    price,
+    stock,
+    image: String(product.image ?? ''),
+    description: product.description ?? '',
+    category: product.category,
+    showInBestSellers: product.showInBestSellers,
+    showInNew: product.showInNew,
+    showInRecommended: product.showInRecommended,
+    supplierId: product.supplierId ? Number(product.supplierId) : 0,
+    createdAt: product.createdAt ?? new Date().toISOString(),
+    discount: hasDiscount,
+    discountValue: hasDiscount ? rawDiscount : 0,
+  };
+};
+
 export default function StoreScreen() {
+  const [isLogged, setIsLogged] = useState(false);
+  const [productsData, setProductsData] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const router = useRouter();
   const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name));
   const [categoryIndex, setCategoryIndex] = useState(0);
   const CATEGORIES_VISIBLE = 4;
-  const promotionProducts = products.filter(
-    product => product.promotion && product.discount > 0
-  );
-  const bestSellers = products.filter(p => p.showInBestSellers);
-  const newProducts = products.filter(p => p.showInNew);
-  const recommendedProducts = products.filter(p => p.showInRecommended);
   const [promoIndex, setPromoIndex] = useState(0);
   const PROMO_VISIBLE = 5;
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'promo'>('all');
+
+  const promotionProducts = productsData.filter(
+    product => product.discount && Number(product.discountValue) > 0
+  );
+  const bestSellers = productsData.filter(p => p.showInBestSellers);
+  const newProducts = productsData.filter(p => p.showInNew);
+  const recommendedProducts = productsData.filter(p => p.showInRecommended);
+
+  const mapStaticProductsToUris = () =>
+    staticProducts.map(product =>
+      normalizeProduct({
+        ...product,
+        image: productImages[product.image]
+          ? Image.resolveAssetSource(productImages[product.image]).uri
+          : String(product.image),
+      })
+    );
+
+  const loadProducts = useCallback(async () => {
+    try {
+      setLoadingProducts(true);
+      const stored = await AsyncStorage.getItem(PRODUCTS_KEY);
+
+      if (stored) {
+        const parsed: Product[] = JSON.parse(stored)
+          .map((p: any) => ({
+            ...p,
+            discount: p.discount ?? false,
+            discountValue: p.discountValue ?? 0,
+          }))
+          .map(normalizeProduct);
+        setProductsData(parsed);
+        return;
+      }
+
+      const seeded = mapStaticProductsToUris();
+      await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(seeded));
+      setProductsData(seeded);
+    } catch (error) {
+      console.error('Erro ao carregar produtos', error);
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, []);
+
+  const allProducts = productsData;
+  const visibleProducts =
+    selectedCategory === 'promo' ? promotionProducts : allProducts;
+
+  const gridProducts =
+    recommendedProducts.length && selectedCategory !== 'promo'
+      ? recommendedProducts
+      : visibleProducts;
 
   const visiblePromotions =
     promotionProducts.length > PROMO_VISIBLE
@@ -47,6 +154,10 @@ export default function StoreScreen() {
       : sortedCategories;
 
   useEffect(() => {
+    setSelectedCategory('all');
+  }, []);
+
+  useEffect(() => {
     if (promotionProducts.length <= PROMO_VISIBLE) return;
 
     const interval = setInterval(() => {
@@ -56,7 +167,7 @@ export default function StoreScreen() {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [promotionProducts]);
+  }, [promotionProducts.length, PROMO_VISIBLE]);
 
   useEffect(() => {
     if (sortedCategories.length <= CATEGORIES_VISIBLE) return;
@@ -70,6 +181,23 @@ export default function StoreScreen() {
     return () => clearInterval(interval);
   }, [sortedCategories]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const checkLogin = async () => {
+        const user = await AsyncStorage.getItem('LOGGED_USER');
+        setIsLogged(!!user);
+      };
+
+      checkLogin();
+    }, [])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProducts();
+    }, [loadProducts])
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
       <StatusBar style="dark" backgroundColor="#fff" />
@@ -78,11 +206,20 @@ export default function StoreScreen() {
         showsVerticalScrollIndicator={false}
       >
 
-      {/* Header */}
-      <View style={styles.header}>
+        {/* Header */}
+        <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Loja</Text>
-          <Pressable onPress={() => router.push('/login')} style={styles.profileButton}>
+          <Pressable
+            onPress={() => {
+              if (isLogged) {
+                router.push('/profile');
+              } else {
+                router.push('/login');
+              }
+            }}
+            style={styles.profileButton}
+          >
             <Ionicons name="person-circle" size={28} color="#004CFF" />
           </Pressable>
         </View>
@@ -133,140 +270,189 @@ export default function StoreScreen() {
           ))}
         </View>
       </Section>
-
-      {/* Mais vendidos */}
-      <Section title="Mais vendidos">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {bestSellers.map(product => (
-            <View key={product.id} style={styles.bestSellerCard}>
-
-              <Image
-                source={productImages[product.image]}
-                style={styles.bestSellerImage}
-                resizeMode="contain"
-              />
-
-              <Text
-                numberOfLines={2}
-                style={styles.productName}
-              >
-                {product.name}
-              </Text>
-
-              <Text style={styles.price}>
-                €{product.price.toFixed(2)}
-              </Text>
-
-            </View>
-          ))}
-        </ScrollView>
-      </Section>
-
-      {/* Novos artigos */}
-      <Section title="Novos artigos" action="Ver mais">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {newProducts.map(product => (
-            <View key={product.id} style={styles.newProductCard}>
-
-              {/* Badge NOVO */}
-              <View style={styles.newBadge}>
-                <Text style={styles.newBadgeText}>Novo</Text>
-              </View>
-
-              <Image
-                source={productImages[product.image]}
-                style={styles.newProductImage}
-                resizeMode="contain"
-              />
-
-              <Text
-                numberOfLines={2}
-                style={styles.productName}
-              >
-                {product.name}
-              </Text>
-
-              <Text style={styles.price}>
-                €{product.price.toFixed(2)}
-              </Text>
-
-            </View>
-          ))}
-        </ScrollView>
-      </Section>
-
-      {/* Ofertas especiais */}
-      <Section title="Ofertas especiais">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {visiblePromotions.map(product => (
-            <View key={product.id} style={styles.offerCard}>
-
-              {product.promotion && (
-                <View style={styles.discountBadge}>
-                  <Text style={styles.discountText}>
-                    -{product.discount}%
-                  </Text>
-                </View>
-              )}
-
-              <Image
-                source={productImages[product.image]}
-                style={styles.offerImage}
-                resizeMode="contain"
-              />
-
-              <Text style={styles.offerName} numberOfLines={2}>
-                {product.name}
-              </Text>
-              {product.promotion ? (
-                <View>
-                  <Text style={styles.oldPrice}>
-                    €{product.price.toFixed(2)}
-                  </Text>
-
-                  <Text style={styles.newPrice}>
-                    €
-                    {(
-                      product.price -
-                      (product.price * product.discount) / 100
-                    ).toFixed(2)}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.normalPrice}>
-                  €{product.price.toFixed(2)}
-                </Text>
-              )}
-
-            </View>
-          ))}
-        </ScrollView>
-      </Section>
-
-      {/* Recomendados */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { fontSize: 22 }]}>Recomendados</Text>
-
-        <View style={styles.recommendedGrid}>
-          {recommendedProducts.map(product => (
-            <View key={product.id} style={styles.recommendedCard}>
-              <Image
-                source={productImages[product.image]}
-                style={styles.recommendedImage}
-                resizeMode="contain"
-              />
-
-              <Text style={styles.productName}>
-                {product.name}
-              </Text>
-
-              <Text style={styles.productPrice}>
-                €{product.price.toFixed(2)}
-              </Text>
-            </View>
-          ))}
+      {loadingProducts ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color="#004CFF" />
+          <Text style={styles.loadingText}>A carregar produtos...</Text>
         </View>
-      </View>
+      ) : (
+        <>
+          {/* Mais vendidos */}
+          <Section title="Mais vendidos">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {bestSellers.map(product => (
+                <Pressable
+                  key={product.id}
+                  style={styles.bestSellerCard}
+                  onPress={() => {
+                    router.push(`/product/${product.id}`);
+                  }}
+                >
+
+                  <Image
+                    source={{ uri: product.image }}
+                    style={styles.bestSellerImage}
+                    resizeMode="contain"
+                  />
+
+                  <Text
+                    numberOfLines={2}
+                    style={styles.productName}
+                  >
+                    {product.name}
+                  </Text>
+
+                  {product.discount ? (
+                    <View>
+                      <Text style={styles.oldPrice}>€{formatPrice(product.price)}</Text>
+                      <Text style={styles.newPrice}>€{formatPrice(getFinalPrice(product))}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.price}>
+                      €{formatPrice(product.price)}
+                    </Text>
+                  )}
+
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Section>
+
+          {/* Novos artigos */}
+          <Section title="Novos artigos" action="Ver mais">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {newProducts.map(product => (
+                <Pressable
+                  key={product.id}
+                  style={styles.newProductCard}
+                  onPress={() => {
+                    router.push(`/product/${product.id}`);
+                  }}
+                >
+
+                  {/* Badge NOVO */}
+                  <View style={styles.newBadge}>
+                    <Text style={styles.newBadgeText}>Novo</Text>
+                  </View>
+
+                  <Image
+                    source={{ uri: product.image }}
+                    style={styles.newProductImage}
+                    resizeMode="contain"
+                  />
+
+                  <Text
+                    numberOfLines={2}
+                    style={styles.productName}
+                  >
+                    {product.name}
+                  </Text>
+
+                  {product.discount ? (
+                    <View>
+                      <Text style={styles.oldPrice}>€{formatPrice(product.price)}</Text>
+                      <Text style={styles.newPrice}>€{formatPrice(getFinalPrice(product))}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.price}>
+                      €{formatPrice(product.price)}
+                    </Text>
+                  )}
+
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Section>
+
+          {/* Ofertas especiais */}
+          <Section title="Ofertas especiais">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {visiblePromotions.map(product => (
+                <Pressable
+                  key={product.id}
+                  style={styles.offerCard}
+                  onPress={() => {
+                    router.push(`/product/${product.id}`);
+                  }}
+                >
+
+                  {product.discount && (
+                    <View style={styles.discountBadge}>
+                      <Text style={styles.discountText}>
+                        -{product.discountValue}%
+                      </Text>
+                    </View>
+                  )}
+
+                  <Image
+                    source={{ uri: product.image }}
+                    style={styles.offerImage}
+                    resizeMode="contain"
+                  />
+
+                  <Text style={styles.offerName} numberOfLines={2}>
+                    {product.name}
+                  </Text>
+                  {product.discount ? (
+                    <View>
+                      <Text style={styles.oldPrice}>
+                        €{formatPrice(product.price)}
+                      </Text>
+
+                      <Text style={styles.newPrice}>
+                        €{formatPrice(getFinalPrice(product))}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.normalPrice}>
+                      €{formatPrice(product.price)}
+                    </Text>
+                  )}
+
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Section>
+
+          {/* Recomendados */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { fontSize: 22 }]}>Recomendados</Text>
+
+            <View style={styles.recommendedGrid}>
+              {gridProducts.map(product => (
+                <Pressable
+                  key={product.id}
+                  style={styles.recommendedCard}
+                  onPress={() => {
+                    router.push(`/product/${product.id}`);
+                  }}
+                >
+                  <Image
+                    source={{ uri: product.image }}
+                    style={styles.recommendedImage}
+                    resizeMode="contain"
+                  />
+
+                  <Text style={styles.productName}>
+                    {product.name}
+                  </Text>
+
+                  {product.discount ? (
+                    <View>
+                      <Text style={styles.oldPrice}>€{formatPrice(product.price)}</Text>
+                      <Text style={styles.newPrice}>€{formatPrice(getFinalPrice(product))}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.productPrice}>
+                      €{formatPrice(product.price)}
+                    </Text>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </>
+      )}
 
       </ScrollView>
     </SafeAreaView>
@@ -292,18 +478,6 @@ function Section({ title, action, onPress, children }: any) {
       </View>
       {children}
     </View>
-  );
-}
-
-function HorizontalProducts() {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      {products.map(p => (
-        <View key={p.id} style={styles.horizontalCard}>
-          <Image source={{ uri: p.image }} style={styles.horizontalImage} />
-        </View>
-      ))}
-    </ScrollView>
   );
 }
 
@@ -335,6 +509,20 @@ const styles = StyleSheet.create({
   searchPlaceholder: {
     color: '#888',
     fontSize: 16,
+  },
+  loadingBox: {
+    backgroundColor: '#F4F6FF',
+    borderRadius: 12,
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 8,
+    color: '#004CFF',
+    fontWeight: '600',
   },
   banner: {
     marginTop: 10,
@@ -465,15 +653,15 @@ const styles = StyleSheet.create({
     top: 8,
     left: 8,
     backgroundColor: '#FF3B30',
-    borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    borderRadius: 8,
     zIndex: 1,
   },
   discountText: {
-    fontWeight: '700',
+    color: '#FFF',
+    fontWeight: 'bold',
     fontSize: 12,
-    color: '#fff',
   },
   offerName: {
     fontSize: 14,
@@ -482,14 +670,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   oldPrice: {
-    fontSize: 14,
-    color: '#999',
     textDecorationLine: 'line-through',
+    color: '#999',
+    fontSize: 12,
   },
   newPrice: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
+    color: '#0A84FF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   normalPrice: {
     fontSize: 18,

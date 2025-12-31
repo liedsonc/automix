@@ -1,50 +1,69 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const [email, setEmail] = useState('');
+
+  const handleNext = async () => {
+    const data = await AsyncStorage.getItem('USERS');
+    const users = data ? JSON.parse(data) : [];
+
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
+      Alert.alert('Erro', 'Email não encontrado');
+      return;
+    }
+
+    router.push({
+      pathname: '/login-password',
+      params: { email },
+    });
+  };
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <SafeAreaView style={styles.container}>
-        {/* Blobs decorativos */}
-        <View style={styles.topBlob} />
-        <View style={styles.bottomBlob} />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <SafeAreaView style={styles.container}>
+          {/* Blobs decorativos */}
+          <View style={styles.topBlob} />
+          <View style={styles.bottomBlob} />
 
-        {/* Conteúdo */}
-        <View style={styles.content}>
-          <Text style={styles.title}>Login</Text>
-          <Text style={styles.subtitle}>Bom vê-lo de volta!</Text>
+          {/* Conteúdo */}
+          <View style={styles.content}>
+            <Text style={styles.title}>Login</Text>
+            <Text style={styles.subtitle}>Bom vê-lo de volta!</Text>
 
-          <TextInput
-            placeholder="Email"
-            placeholderTextColor="#AAA"
-            style={styles.input}
-          />
+            <TextInput
+              placeholder="Email"
+              placeholderTextColor="#AAA"
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
 
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#AAA"
-            style={styles.input}
-            secureTextEntry
-          />
+            <Pressable style={styles.primaryButton} onPress={handleNext}>
+              <Text style={styles.primaryButtonText}>Continuar</Text>
+            </Pressable>
 
-          <Pressable style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Continuar</Text>
-          </Pressable>
+            <Pressable onPress={() => router.push('/create-account')}>
+              <Text style={styles.createAccount}>Criar uma conta</Text>
+            </Pressable>
 
-          <Pressable onPress={() => Alert.alert('Conta', 'Funcionalidade em breve')}>
-            <Text style={styles.createAccount}>Criar uma conta</Text>
-          </Pressable>
-
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.cancelText}>Cancelar</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
     </>
   );
 }
