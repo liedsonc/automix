@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router';
 export default function TabLayout() {
   return (
     <Tabs
+      initialRouteName="store"
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
@@ -16,7 +17,7 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="store"
         options={{
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
@@ -34,19 +35,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'search' : 'search-outline'}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="store"
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'cart' : 'cart-outline'}
               size={24}
               color={color}
             />
@@ -77,6 +65,30 @@ export default function TabLayout() {
               color={color}
             />
           ),
+        }}
+      />
+
+      {/* 👇 ESCONDER COMPLETAMENTE O PRODUCT */}
+      <Tabs.Screen
+        name="product"
+        options={{
+          href: null, // 🔥 ISTO REMOVE DA TAB BAR
+        }}
+      />
+
+      {/* 👇 ESCONDER ADD-PRODUCT DA TAB BAR */}
+      <Tabs.Screen
+        name="add-product"
+        options={{
+          href: null,
+        }}
+      />
+
+      {/* 👇 ESCONDER PROMO DA TAB BAR */}
+      <Tabs.Screen
+        name="promo"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

@@ -1,3 +1,4 @@
+import categories from '@/data/categories.json';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -21,6 +22,12 @@ type User = {
   avatar?: string;
 };
 
+type Category = {
+  id: number;
+  name: string;
+  imageKey: string;
+};
+
 type Product = {
   id: number;
   name: string;
@@ -29,7 +36,7 @@ type Product = {
   description?: string;
   image: string;
   supplierId: number;
-
+  categoryId?: number;
   discount: boolean;
   discountValue: number;
 };
@@ -61,6 +68,8 @@ export default function Profile() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [myProducts, setMyProducts] = useState<Product[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const loadSupplierProducts = useCallback(async (loggedUser: User) => {
     const data = await AsyncStorage.getItem('PRODUCTS');
     const products = data
@@ -120,6 +129,13 @@ export default function Profile() {
     ]);
   };
 
+  const filteredProducts = selectedCategory
+    ? myProducts.filter(p => p.categoryId === selectedCategory)
+    : myProducts;
+
+  const displayedProducts = isExpanded ? filteredProducts : filteredProducts.slice(0, 4);
+  const hasMoreProducts = filteredProducts.length > 4;
+
   if (!user) return null;
 
   return (
@@ -169,18 +185,6 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* VISTOS RECENTEMENTE */}
-        <Text style={styles.sectionTitle}>Vistos recentemente</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Image
-              key={i}
-              source={{ uri: `https://picsum.photos/100?${i}` }}
-              style={styles.recentItem}
-            />
-          ))}
-        </ScrollView>
-
         {/* MINHAS ENCOMENDAS */}
         <Text style={styles.sectionTitle}>Minhas Encomendas</Text>
         <View style={styles.orderRow}>
@@ -195,16 +199,68 @@ export default function Profile() {
         {/* MEUS PRODUTOS (APENAS FORNECEDOR) */}
         {user.role === 'fornecedor' && (
           <View style={{ marginTop: 32 }}>
-            <Text style={styles.sectionTitle}>Meus produtos</Text>
+            <View style={styles.productsHeader}>
+              <Text style={styles.sectionTitle}>Meus produtos</Text>
+              <Pressable 
+                style={styles.addButton}
+                onPress={() => router.push('/add-product')}
+              >
+                <Ionicons name="add" size={24} color="#FFF" />
+              </Pressable>
+            </View>
 
-            <Pressable onPress={clearProducts} style={{ marginBottom: 8 }}>
-              <Text style={styles.clearText}>Apagar produtos criados</Text>
-            </Pressable>
+            {/* FILTRO DE CATEGORIAS */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoryScroll}
+              contentContainerStyle={styles.categoryContent}
+            >
+              <Pressable
+                style={[
+                  styles.categoryPill,
+                  selectedCategory === null && styles.categoryPillActive,
+                ]}
+                onPress={() => setSelectedCategory(null)}
+              >
+                <Text
+                  style={[
+                    styles.categoryText,
+                    selectedCategory === null && styles.categoryTextActive,
+                  ]}
+                >
+                  Todas
+                </Text>
+              </Pressable>
+
+              {categories.map((cat: Category) => (
+                <Pressable
+                  key={cat.id}
+                  style={[
+                    styles.categoryPill,
+                    selectedCategory === cat.id && styles.categoryPillActive,
+                  ]}
+                  onPress={() => setSelectedCategory(cat.id)}
+                >
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      selectedCategory === cat.id && styles.categoryTextActive,
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
 
             {myProducts.length === 0 ? (
               <Text style={styles.noticeText}>Nenhum produto publicado</Text>
+            ) : filteredProducts.length === 0 ? (
+              <Text style={styles.noticeText}>Nenhum produto nesta categoria</Text>
             ) : (
-              myProducts.map(item => (
+              <>
+                {displayedProducts.map(item => (
                 <View key={item.id} style={styles.productCard}>
                   <Image source={{ uri: item.image }} style={styles.productImage} />
                   <View style={{ flex: 1 }}>
@@ -231,7 +287,19 @@ export default function Profile() {
                     </Pressable>
                   </View>
                 </View>
-              ))
+              ))}
+
+                {hasMoreProducts && (
+                  <Pressable
+                    style={styles.viewMoreButton}
+                    onPress={() => setIsExpanded(!isExpanded)}
+                  >
+                    <Text style={styles.viewMoreText}>
+                      {isExpanded ? 'Ver menos' : `Ver mais (${filteredProducts.length - 4})`}
+                    </Text>
+                  </Pressable>
+                )}
+              </>
             )}
           </View>
         )}
@@ -430,5 +498,70 @@ const styles = StyleSheet.create({
   deleteBtnText: {
     color: '#FFF',
     fontWeight: '700',
+  },
+
+  categoryScroll: {
+    marginBottom: 16,
+  },
+
+  categoryContent: {
+    gap: 8,
+  },
+
+  categoryPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+
+  categoryPillActive: {
+    backgroundColor: '#0D5CFF',
+    borderColor: '#0D5CFF',
+  },
+
+  categoryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+
+  categoryTextActive: {
+    color: '#FFF',
+  },
+
+  viewMoreButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+
+  viewMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0D5CFF',
+  },
+
+  productsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#0D5CFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -10,6 +10,7 @@ import '@/global.css';
 
 export const unstable_settings = {
   anchor: '(tabs)',
+  initialRouteName: '(tabs)',
 };
 
 export default function RootLayout() {
@@ -23,8 +24,10 @@ export default function RootLayout() {
         screenOptions={{
           headerShown: false,
         }}
+        initialRouteName="(tabs)"
       >
-        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

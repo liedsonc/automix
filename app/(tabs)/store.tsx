@@ -11,9 +11,8 @@ import {
   View
 } from 'react-native';
 
-import { categoryImages, productImages } from '@/constants/images';
+import { categoryImages } from '@/constants/images';
 import categories from '@/data/categories.json';
-import staticProducts from '@/data/products.json';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -91,36 +90,20 @@ export default function StoreScreen() {
   const newProducts = productsData.filter(p => p.showInNew);
   const recommendedProducts = productsData.filter(p => p.showInRecommended);
 
-  const mapStaticProductsToUris = () =>
-    staticProducts.map(product =>
-      normalizeProduct({
-        ...product,
-        image: productImages[product.image]
-          ? Image.resolveAssetSource(productImages[product.image]).uri
-          : String(product.image),
-      })
-    );
-
   const loadProducts = useCallback(async () => {
     try {
       setLoadingProducts(true);
       const stored = await AsyncStorage.getItem(PRODUCTS_KEY);
-
-      if (stored) {
-        const parsed: Product[] = JSON.parse(stored)
-          .map((p: any) => ({
-            ...p,
-            discount: p.discount ?? false,
-            discountValue: p.discountValue ?? 0,
-          }))
-          .map(normalizeProduct);
-        setProductsData(parsed);
-        return;
-      }
-
-      const seeded = mapStaticProductsToUris();
-      await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(seeded));
-      setProductsData(seeded);
+      const parsed: Product[] = stored
+        ? JSON.parse(stored)
+            .map((p: any) => ({
+              ...p,
+              discount: p.discount ?? false,
+              discountValue: p.discountValue ?? 0,
+            }))
+            .map(normalizeProduct)
+        : [];
+      setProductsData(parsed);
     } catch (error) {
       console.error('Erro ao carregar produtos', error);
     } finally {
@@ -145,13 +128,7 @@ export default function StoreScreen() {
         )
       : promotionProducts;
 
-  const visibleCategories =
-    sortedCategories.length > CATEGORIES_VISIBLE
-      ? [...sortedCategories, ...sortedCategories].slice(
-          categoryIndex,
-          categoryIndex + CATEGORIES_VISIBLE
-        )
-      : sortedCategories;
+  const visibleCategories = sortedCategories;
 
   useEffect(() => {
     setSelectedCategory('all');
@@ -254,7 +231,11 @@ export default function StoreScreen() {
         action="Ver todos"
         onPress={() => router.push('/categories')}
       >
-        <View style={styles.categories}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesScroll}
+        >
           {visibleCategories.map(cat => (
             <View key={cat.id} style={styles.categoryCard}>
               <View style={styles.categoryImageWrapper}>
@@ -268,7 +249,7 @@ export default function StoreScreen() {
               <Text style={styles.categoryName}>{cat.name}</Text>
             </View>
           ))}
-        </View>
+        </ScrollView>
       </Section>
       {loadingProducts ? (
         <View style={styles.loadingBox}>
@@ -292,52 +273,6 @@ export default function StoreScreen() {
                   <Image
                     source={{ uri: product.image }}
                     style={styles.bestSellerImage}
-                    resizeMode="contain"
-                  />
-
-                  <Text
-                    numberOfLines={2}
-                    style={styles.productName}
-                  >
-                    {product.name}
-                  </Text>
-
-                  {product.discount ? (
-                    <View>
-                      <Text style={styles.oldPrice}>€{formatPrice(product.price)}</Text>
-                      <Text style={styles.newPrice}>€{formatPrice(getFinalPrice(product))}</Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.price}>
-                      €{formatPrice(product.price)}
-                    </Text>
-                  )}
-
-                </Pressable>
-              ))}
-            </ScrollView>
-          </Section>
-
-          {/* Novos artigos */}
-          <Section title="Novos artigos" action="Ver mais">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {newProducts.map(product => (
-                <Pressable
-                  key={product.id}
-                  style={styles.newProductCard}
-                  onPress={() => {
-                    router.push(`/product/${product.id}`);
-                  }}
-                >
-
-                  {/* Badge NOVO */}
-                  <View style={styles.newBadge}>
-                    <Text style={styles.newBadgeText}>Novo</Text>
-                  </View>
-
-                  <Image
-                    source={{ uri: product.image }}
-                    style={styles.newProductImage}
                     resizeMode="contain"
                   />
 
@@ -556,31 +491,32 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 20, fontWeight: 'bold' },
   action: { color: '#1E90FF' },
 
-  categories: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between'
+  categoriesScroll: {
+    paddingRight: 20,
   },
+
   categoryCard: {
-    width: '48%',
+    width: 120,
     alignItems: 'center',
-    marginBottom: 20,
+    marginRight: 16,
   },
   categoryImageWrapper: {
-    width: '100%',
-    height: 130,
+    width: 120,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
+    borderRadius: 12,
   },
   categoryImage: {
     width: '90%',
     height: '90%',
   },
   categoryName: {
-    marginTop: 6,
+    marginTop: 8,
     fontWeight: '600',
     textAlign: 'center',
+    fontSize: 13,
   },
   categoryCount: {
     color: '#777',

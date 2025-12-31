@@ -1,7 +1,7 @@
 import categories from '@/data/categories.json';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,16 +15,6 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-type UserRole = 'cliente' | 'fornecedor' | 'admin';
-
-type User = {
-  id?: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  role?: UserRole;
-};
 
 type Category = {
   id: number;
@@ -46,11 +36,11 @@ type Product = {
   createdAt: string;
 };
 
-export default function AddProductScreen() {
+export default function EditProductScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams();
 
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -62,22 +52,35 @@ export default function AddProductScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const loadUser = async () => {
-      const data = await AsyncStorage.getItem('LOGGED_USER');
-      if (data) {
-        setUser(JSON.parse(data));
+    loadProduct();
+  }, [id]);
+
+  const loadProduct = async () => {
+    try {
+      const data = await AsyncStorage.getItem('PRODUCTS');
+      const products: Product[] = data ? JSON.parse(data) : [];
+      const product = products.find((p) => String(p.id) === String(id));
+
+      if (product) {
+        setName(product.name);
+        setDescription(product.description || '');
+        setPrice(String(product.price));
+        setStock(String(product.stock));
+        setImageUri(product.image);
+        setCategoryId(product.categoryId || null);
+        setHasDiscount(product.discount || false);
+        setDiscountValue(product.discountValue ? String(product.discountValue) : '');
+      } else {
+        Alert.alert('Erro', 'Produto não encontrado');
+        router.back();
       }
-      setLoadingUser(false);
-    };
-
-    loadUser();
-  }, []);
-
-  useEffect(() => {
-    if (!loadingUser && (!user || user.role !== 'fornecedor')) {
-      router.replace('/store');
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível carregar o produto');
+      router.back();
+    } finally {
+      setLoading(false);
     }
-  }, [loadingUser, router, user]);
+  };
 
   const pickProductImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -92,7 +95,7 @@ export default function AddProductScreen() {
     }
   };
 
-  const handleCreateProduct = async () => {
+  const handleSaveProduct = async () => {
     if (!name || !price || !imageUri || !categoryId) {
       Alert.alert('Erro', 'Preencha todos os campos e selecione uma categoria');
       return;
@@ -103,52 +106,48 @@ export default function AddProductScreen() {
 
       const data = await AsyncStorage.getItem('PRODUCTS');
       const products: Product[] = data ? JSON.parse(data) : [];
+      
+      const productIndex = products.findIndex((p) => String(p.id) === String(id));
+      
+      if (productIndex === -1) {
+        Alert.alert('Erro', 'Produto não encontrado');
+        return;
+      }
 
-      const newProduct: Product = {
-        id: Date.now().toString(),
+      // Atualizar o produto
+      products[productIndex] = {
+        ...products[productIndex],
         name,
         description,
         price: Number(price),
         stock: Number(stock) || 0,
         image: imageUri,
-        supplierId: user?.id ?? user?.email,
         categoryId,
         discount: hasDiscount,
         discountValue: hasDiscount ? Number(discountValue) : 0,
-        createdAt: new Date().toISOString(),
       };
-
-      products.push(newProduct);
 
       await AsyncStorage.setItem('PRODUCTS', JSON.stringify(products));
 
-      Alert.alert('Sucesso', 'Produto criado!');
-
-      setName('');
-      setDescription('');
-      setPrice('');
-      setStock('');
-      setImageUri(null);
-      setCategoryId(null);
-      setHasDiscount(false);
-      setDiscountValue('');
+      Alert.alert('Sucesso', 'Produto atualizado!', [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível criar o produto');
+      Alert.alert('Erro', 'Não foi possível atualizar o produto');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loadingUser) {
+  if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" color="#0A4CFF" />
       </SafeAreaView>
     );
-  }
-
-  if (!user || user.role !== 'fornecedor') {
-    return null;
   }
 
   return (
@@ -158,7 +157,7 @@ export default function AddProductScreen() {
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
 
-        <Text style={styles.title}>Novo produto</Text>
+        <Text style={styles.title}>Editar produto</Text>
 
         <Pressable style={styles.imagePicker} onPress={pickProductImage}>
           {imageUri ? (
@@ -256,11 +255,11 @@ export default function AddProductScreen() {
 
         <Pressable
           style={[styles.button, saving && styles.buttonDisabled]}
-          onPress={handleCreateProduct}
+          onPress={handleSaveProduct}
           disabled={saving}
         >
           <Text style={styles.buttonText}>
-            {saving ? 'A guardar...' : 'Criar produto'}
+            {saving ? 'A guardar...' : 'Guardar alterações'}
           </Text>
         </Pressable>
 
@@ -331,6 +330,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    marginTop: 8,
   },
   buttonDisabled: {
     opacity: 0.7,

@@ -1,25 +1,64 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { productImages } from '@/constants/images';
-import products from '@/data/products.json';
+type Product = {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  image: string;
+  supplierId: number;
+  discount: boolean;
+  discountValue: number;
+  createdAt: string;
+  category?: string;
+};
+
+const PRODUCTS_KEY = 'PRODUCTS';
+
+const normalizeProduct = (product: any): Product => ({
+  id: Number(product.id ?? 0),
+  name: String(product.name ?? ''),
+  description: String(product.description ?? ''),
+  price: Number(product.price ?? 0),
+  stock: Number(product.stock ?? 0),
+  image: String(product.image ?? ''),
+  supplierId: Number(product.supplierId ?? 0),
+  discount: Boolean(product.discount) ?? false,
+  discountValue: Number(product.discountValue ?? 0),
+  createdAt: product.createdAt ?? new Date().toISOString(),
+  category: product.category,
+});
 
 export default function ExploreScreen() {
   const [search, setSearch] = useState('');
   const [filterVisible, setFilterVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const router = useRouter();
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    const stored = await AsyncStorage.getItem(PRODUCTS_KEY);
+    const parsed: Product[] = stored ? JSON.parse(stored).map(normalizeProduct) : [];
+    setProducts(parsed);
+  };
 
   const normalizeText = (text: string) =>
     text
@@ -70,7 +109,7 @@ export default function ExploreScreen() {
             {filteredProducts.map(product => (
               <View key={product.id} style={styles.resultCard}>
                 <Image
-                  source={productImages[product.image]}
+                  source={{ uri: product.image }}
                   style={styles.resultImage}
                   resizeMode="contain"
                 />
@@ -113,7 +152,7 @@ export default function ExploreScreen() {
                 {products.slice(0, 4).map(product => (
                   <View key={product.id} style={styles.discoverCard}>
                     <Image
-                      source={productImages[product.image]}
+                      source={{ uri: product.image }}
                       style={styles.discoverImage}
                       resizeMode="contain"
                     />
