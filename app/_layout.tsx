@@ -28,6 +28,17 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
+        {/* Rotas de produto fora das tabs */}
+        <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="product/edit/[id]" options={{ headerShown: false }} />
+
+        {/* Auth & outras rotas soltas */}
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="login-password" options={{ headerShown: false }} />
+        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen name="create-account" options={{ headerShown: false }} />
+        <Stack.Screen name="promo" options={{ headerShown: false }} />
+
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

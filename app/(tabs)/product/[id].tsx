@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { cartEventEmitter } from '../../../utils/cartEvents';
 
 type Product = {
   id: number;
@@ -19,6 +20,7 @@ type Product = {
 };
 
 const PRODUCTS_KEY = 'PRODUCTS';
+const CART_KEY = 'CART';
 
 const normalizeProduct = (product: any): Product => {
   const price = Number(product.price ?? 0);
@@ -47,14 +49,142 @@ const getFinalPrice = (price: number, discountValue: number) => {
 };
 
 export default function ProductScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from: rawFrom } = useLocalSearchParams<{ id: string | string[]; from?: string | string[] }>();
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [storedPrevTab, setStoredPrevTab] = useState<string | null>(null);
+  const [storedLastTab, setStoredLastTab] = useState<string | null>(null);
+  const [loadingFrom, setLoadingFrom] = useState(true);
+  const [isClient, setIsClient] = useState<boolean | null>(null);
+
+  const productId = Array.isArray(id) ? id[0] : id;
+  const from = Array.isArray(rawFrom) ? rawFrom[0] : rawFrom;
+  const fallbackRoute = from || storedPrevTab || storedLastTab || '/(tabs)/store';
 
   useEffect(() => {
-    loadProduct();
-  }, [id]);
+    const loadLastTab = async () => {
+      try {
+        const [prev, last] = await Promise.all([
+          AsyncStorage.getItem('PREV_TAB'),
+          AsyncStorage.getItem('LAST_TAB'),
+        ]);
+        if (prev && !prev.includes('/teste')) setStoredPrevTab(prev);
+        if (last && !last.includes('/teste')) setStoredLastTab(last);
+      } catch {
+        // ignore read errors
+      } finally {
+        setLoadingFrom(false);
+      }
+    };
+
+    loadLastTab();
+  }, []);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      try {
+        const raw = await AsyncStorage.getItem('LOGGED_USER');
+        if (!raw) {
+          setIsClient(false);
+          return;
+        }
+        const user = JSON.parse(raw);
+        setIsClient(user.role === 'cliente');
+      } catch {
+        setIsClient(false);
+      }
+    };
+
+    checkRole();
+  }, []);
+
+  const handleBack = () => {
+    if (loadingFrom) return;
+
+    const target = from || storedPrevTab || storedLastTab;
+    if (target) {
+      router.replace(target);
+      return;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/store');
+    }
+  };
+
+  const ensureClient = async (): Promise<boolean> => {
+    try {
+      const userRaw = await AsyncStorage.getItem('LOGGED_USER');
+      if (!userRaw) {
+        Alert.alert('Login necessário', 'Entre como cliente para fazer compras');
+        router.push('/login');
+        return false;
+      }
+
+      const user = JSON.parse(userRaw);
+      if (user.role !== 'cliente') {
+        Alert.alert('Sem permissão', 'Apenas clientes podem fazer compras');
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      console.error('Erro ao validar utilizador', e);
+      Alert.alert('Erro', 'Não foi possível validar o seu perfil');
+      return false;
+    }
+  };
+
+  const addToCart = async (openCart: boolean = false) => {
+    try {
+      const allowed = await ensureClient();
+      if (!allowed) return;
+
+      const stored = await AsyncStorage.getItem(CART_KEY);
+      const cartItems = stored ? JSON.parse(stored) : [];
+
+      const existingItem = cartItems.find((item: any) => item.productId === product.id);
+
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        cartItems.push({
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          quantity: 1,
+        });
+      }
+
+      await AsyncStorage.setItem(CART_KEY, JSON.stringify(cartItems));
+      cartEventEmitter.emit();
+
+      if (openCart) {
+        router.push('/(tabs)/card');
+      } else {
+        Alert.alert('Sucesso', `${product.name} adicionado ao carrinho`);
+      }
+    } catch (e) {
+      console.error('Erro ao adicionar ao carrinho', e);
+      Alert.alert('Erro', 'Não foi possível adicionar ao carrinho');
+    }
+  };
+
+  const handleWishlist = async () => {
+    const allowed = await ensureClient();
+    if (!allowed) return;
+    Alert.alert('Wishlist', 'Funcionalidade em breve');
+  };
+
+  useEffect(() => {
+    if (productId) {
+      loadProduct();
+    }
+  }, [productId]);
 
   const loadProduct = async () => {
     try {
@@ -65,7 +195,7 @@ export default function ProductScreen() {
         ? JSON.parse(stored).map(normalizeProduct)
         : [];
 
-      const found = storedProducts.find(p => String(p.id) === String(id));
+      const found = storedProducts.find(p => String(p.id) === String(productId));
 
       setProduct(found ?? null);
     } catch (e) {
@@ -75,7 +205,7 @@ export default function ProductScreen() {
     }
   };
 
-  if (loading) {
+  if (!productId || loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -91,7 +221,7 @@ export default function ProductScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text>Produto não encontrado</Text>
-          <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
+          <Pressable onPress={handleBack} style={{ marginTop: 20 }}>
             <Text style={{ color: '#004CFF' }}>Voltar</Text>
           </Pressable>
         </View>
@@ -108,23 +238,22 @@ export default function ProductScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Pressable onPress={() => router.back()} style={{ marginBottom: 12 }}>
+        <Pressable onPress={handleBack} style={{ marginBottom: 12 }}>
           <Ionicons name="chevron-back" size={24} />
         </Pressable>
 
         <Image source={{ uri: product.image }} style={styles.image} />
-
-        {product.discount && (
-          <View style={styles.promoBadge}>
-            <Text style={styles.promoBadgeText}>EM PROMOÇÃO</Text>
-          </View>
-        )}
 
         <Text style={styles.title}>{product.name}</Text>
 
         <View style={styles.priceBlock}>
           {product.discount ? (
             <>
+              {/* Selo de promoção acima do preço antigo */}
+              <View style={styles.promoBadgeInline}>
+                <Text style={styles.promoBadgeText}>EM PROMOÇÃO</Text>
+              </View>
+
               {/* Preço antigo riscado */}
               <Text style={styles.oldPrice}>
                 €{product.price.toFixed(2)}
@@ -157,16 +286,28 @@ export default function ProductScreen() {
 
       {/* Bottom bar do produto */}
       <View style={styles.bottomBar}>
-        <Pressable style={styles.wishlistBtn}>
-          <Ionicons name="heart-outline" size={22} />
+        <Pressable
+          style={[styles.wishlistBtn, !isClient && styles.disabledBtn]}
+          onPress={handleWishlist}
+          disabled={isClient === false}
+        >
+          <Ionicons name="heart-outline" size={22} color={isClient === false ? '#999' : '#000'} />
         </Pressable>
 
-        <Pressable style={styles.cartBtn}>
-          <Text style={styles.cartText}>Carrinho</Text>
+        <Pressable
+          style={[styles.cartBtn, !isClient && styles.disabledBtn]}
+          onPress={() => addToCart(false)}
+          disabled={isClient === false}
+        >
+          <Text style={[styles.cartText, !isClient && styles.disabledText]}>Carrinho</Text>
         </Pressable>
 
-        <Pressable style={styles.buyBtn}>
-          <Text style={styles.buyText}>Comprar agora</Text>
+        <Pressable
+          style={[styles.buyBtn, !isClient && styles.disabledBtnPrimary]}
+          onPress={() => addToCart(true)}
+          disabled={isClient === false}
+        >
+          <Text style={[styles.buyText, !isClient && styles.disabledTextPrimary]}>Comprar agora</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -181,27 +322,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F2',
     marginBottom: 16,
   },
-  promoBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFD60A',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  promoBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#000',
-  },
   title: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '700',
     marginBottom: 12,
   },
   priceBlock: {
     marginTop: 8,
     marginBottom: 16,
+  },
+  promoBadgeInline: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFD60A',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  promoBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#000',
   },
   oldPrice: {
     fontSize: 14,
@@ -268,6 +409,18 @@ const styles = StyleSheet.create({
   cartText: {
     color: '#fff',
     fontWeight: '700',
+  },
+  disabledBtn: {
+    opacity: 0.5,
+  },
+  disabledBtnPrimary: {
+    opacity: 0.6,
+  },
+  disabledText: {
+    color: '#777',
+  },
+  disabledTextPrimary: {
+    color: '#d6d6d6',
   },
   buyBtn: {
     flex: 1,

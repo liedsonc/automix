@@ -1,16 +1,16 @@
 import categories from '@/data/categories.json';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
+    Alert,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -101,6 +101,12 @@ export default function Profile() {
     loadProfile();
   }, [loadSupplierProducts]);
 
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.setItem('LAST_TAB', '/(tabs)/profile').catch(() => {});
+    }, [])
+  );
+
   const handleLogout = async () => {
     await AsyncStorage.removeItem('LOGGED_USER');
     router.replace('/login');
@@ -158,7 +164,9 @@ export default function Profile() {
 
           <View style={styles.headerIcons}>
             <Ionicons name="notifications-outline" size={22} />
-            <Ionicons name="settings-outline" size={22} />
+            <Pressable onPress={() => router.push('/settings')}>
+              <Ionicons name="settings-outline" size={22} />
+            </Pressable>
             <Pressable onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={22} />
             </Pressable>

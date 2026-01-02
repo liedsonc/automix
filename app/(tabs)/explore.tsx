@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
     Modal,
@@ -48,7 +48,36 @@ export default function ExploreScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [storedPrevTab, setStoredPrevTab] = useState<string | null>(null);
+  const [storedLastTab, setStoredLastTab] = useState<string | null>(null);
+  const [loadingFrom, setLoadingFrom] = useState(true);
   const router = useRouter();
+  const { from: rawFrom } = useLocalSearchParams<{ from?: string | string[] }>();
+
+  const from = Array.isArray(rawFrom) ? rawFrom[0] : rawFrom;
+
+  useFocusEffect(() => {
+    AsyncStorage.setItem('LAST_TAB', '/(tabs)/explore').catch(() => {});
+  });
+
+  useEffect(() => {
+    const loadLastTab = async () => {
+      try {
+        const [prev, last] = await Promise.all([
+          AsyncStorage.getItem('PREV_TAB'),
+          AsyncStorage.getItem('LAST_TAB'),
+        ]);
+        if (prev && !prev.includes('/teste')) setStoredPrevTab(prev);
+        if (last && !last.includes('/teste')) setStoredLastTab(last);
+      } catch {
+        // ignore read errors
+      } finally {
+        setLoadingFrom(false);
+      }
+    };
+
+    loadLastTab();
+  }, []);
 
   useEffect(() => {
     loadProducts();
@@ -78,13 +107,33 @@ export default function ExploreScreen() {
     return matchesSearch && matchesCategory;
   });
 
+  const handleBack = () => {
+    if (loadingFrom) return;
+
+    const current = '/(tabs)/explore';
+    const candidates = [from, storedPrevTab, storedLastTab].filter(
+      (p): p is string => Boolean(p && p !== current && !p.includes('/teste'))
+    );
+
+    if (candidates.length) {
+      router.replace(candidates[0]);
+      return;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/store');
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Header + barra de pesquisa */}
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={handleBack}>
             <Text style={styles.backIcon}>←</Text>
           </Pressable>
 
@@ -107,17 +156,21 @@ export default function ExploreScreen() {
         {search.length > 0 ? (
           <View style={styles.results}>
             {filteredProducts.map(product => (
-              <View key={product.id} style={styles.resultCard}>
+              <Pressable
+                key={product.id}
+                style={styles.resultCard}
+                onPress={() => router.push(`/product/${product.id}?from=/explore`)}
+              >
                 <Image
                   source={{ uri: product.image }}
                   style={styles.resultImage}
-                  resizeMode="contain"
+                  contentFit="contain"
                 />
                 <Text style={styles.resultName}>{product.name}</Text>
                 <Text style={styles.resultPrice}>
                   €{product.price.toFixed(2)}
                 </Text>
-              </View>
+              </Pressable>
             ))}
 
             {filteredProducts.length === 0 && (
@@ -150,17 +203,21 @@ export default function ExploreScreen() {
 
               <View style={styles.discoverGrid}>
                 {products.slice(0, 4).map(product => (
-                  <View key={product.id} style={styles.discoverCard}>
+                  <Pressable
+                    key={product.id}
+                    style={styles.discoverCard}
+                    onPress={() => router.push(`/product/${product.id}?from=/explore`)}
+                  >
                     <Image
                       source={{ uri: product.image }}
                       style={styles.discoverImage}
-                      resizeMode="contain"
+                      contentFit="contain"
                     />
                     <Text style={styles.discoverText}>{product.name}</Text>
                     <Text style={styles.discoverPrice}>
                       €{product.price.toFixed(2)}
                     </Text>
-                  </View>
+                  </Pressable>
                 ))}
               </View>
             </View>

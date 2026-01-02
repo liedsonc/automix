@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
+    ActivityIndicator,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View
 } from 'react-native';
 
 import { categoryImages } from '@/constants/images';
@@ -160,6 +160,8 @@ export default function StoreScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      AsyncStorage.setItem('LAST_TAB', '/(tabs)/store').catch(() => {});
+
       const checkLogin = async () => {
         const user = await AsyncStorage.getItem('LOGGED_USER');
         setIsLogged(!!user);
@@ -265,9 +267,7 @@ export default function StoreScreen() {
                 <Pressable
                   key={product.id}
                   style={styles.bestSellerCard}
-                  onPress={() => {
-                    router.push(`/product/${product.id}`);
-                  }}
+                  onPress={() => router.push(`/product/${product.id}?from=/store`)}
                 >
 
                   <Image
@@ -306,9 +306,7 @@ export default function StoreScreen() {
                 <Pressable
                   key={product.id}
                   style={styles.offerCard}
-                  onPress={() => {
-                    router.push(`/product/${product.id}`);
-                  }}
+                  onPress={() => router.push(`/product/${product.id}?from=/store`)}
                 >
 
                   {product.discount && (
@@ -358,9 +356,7 @@ export default function StoreScreen() {
                 <Pressable
                   key={product.id}
                   style={styles.recommendedCard}
-                  onPress={() => {
-                    router.push(`/product/${product.id}`);
-                  }}
+                  onPress={() => router.push(`/product/${product.id}?from=/store`)}
                 >
                   <Image
                     source={{ uri: product.image }}

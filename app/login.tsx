@@ -58,6 +58,10 @@ export default function LoginScreen() {
               <Text style={styles.createAccount}>Criar uma conta</Text>
             </Pressable>
 
+            <Pressable onPress={() => router.push('/forgot-password')}>
+              <Text style={styles.forgotText}>Esqueci-me da palavra-passe</Text>
+            </Pressable>
+
             <Pressable onPress={() => router.back()}>
               <Text style={styles.cancelText}>Cancelar</Text>
             </Pressable>
@@ -122,6 +126,13 @@ const styles = StyleSheet.create({
     color: '#0A4CFF',
     marginBottom: 12,
     fontWeight: '600',
+  },
+
+  forgotText: {
+    textAlign: 'center',
+    fontSize: 15,
+    color: '#0A4CFF',
+    marginBottom: 12,
   },
 
   cancelText: {
