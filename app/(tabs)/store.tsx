@@ -1,14 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
 
 import { categoryImages } from '@/constants/images';
@@ -199,7 +198,11 @@ export default function StoreScreen() {
             }}
             style={styles.profileButton}
           >
-            <Ionicons name="person-circle" size={28} color="#004CFF" />
+            <Image
+              source={require('@/assets/images/logo.jpeg')}
+              style={styles.profileImage}
+              resizeMode="cover"
+            />
           </Pressable>
         </View>
         <Pressable
@@ -231,7 +234,7 @@ export default function StoreScreen() {
       <Section
         title="Categorias"
         action="Ver todos"
-        onPress={() => router.push('/categories')}
+        onPress={() => router.push('/(tabs)/categories')}
       >
         <ScrollView 
           horizontal 
@@ -239,7 +242,11 @@ export default function StoreScreen() {
           contentContainerStyle={styles.categoriesScroll}
         >
           {visibleCategories.map(cat => (
-            <View key={cat.id} style={styles.categoryCard}>
+            <Pressable
+              key={cat.id}
+              style={styles.categoryCard}
+              onPress={() => router.push(`/(tabs)/categories/${cat.id}`)}
+            >
               <View style={styles.categoryImageWrapper}>
                 <Image
                   source={categoryImages[cat.imageKey]}
@@ -249,7 +256,7 @@ export default function StoreScreen() {
               </View>
 
               <Text style={styles.categoryName}>{cat.name}</Text>
-            </View>
+            </Pressable>
           ))}
         </ScrollView>
       </Section>
@@ -429,6 +436,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: 'bold' },
   profileButton: {
     padding: 4,
+  },
+  profileImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
   },
   searchBar: {
     backgroundColor: '#F2F2F2',

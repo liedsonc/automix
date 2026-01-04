@@ -1,0 +1,6 @@
+export const STORAGE_KEYS = {
+  CART: 'CART',
+  ORDERS: 'ORDERS',
+  USER: 'USER',
+  NOTIFICATIONS: 'NOTIFICATIONS',
+} as const;

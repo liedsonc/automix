@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { Alert, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+const NOTIFICATIONS_KEY = 'NOTIFICATIONS';
+
 type UserRole = 'cliente' | 'fornecedor' | 'admin';
 
 type User = {
@@ -39,30 +41,52 @@ export default function CreateAccount() {
     }
   };
 
+
   const handleCreateAccount = async (): Promise<void> => {
     if (!name || !email || !password || !avatar) {
       Alert.alert('Erro', 'Preencha todos os campos e escolha um avatar');
       return;
     }
 
-    const newUser: User = {
+    const newUser = {
       id: Date.now().toString(),
       name,
       email,
       password,
       avatar,
       role,
+      approved: role === 'cliente' ? true : false, // 👈 AQUI ESTÁ A CHAVE
     };
 
-    const stored = await AsyncStorage.getItem('USERS');
-    const users: User[] = stored ? JSON.parse(stored) : [];
+    const storedUsers = await AsyncStorage.getItem('USERS');
+    const users = storedUsers ? JSON.parse(storedUsers) : [];
 
     users.push(newUser);
 
     await AsyncStorage.setItem('USERS', JSON.stringify(users));
-    await AsyncStorage.setItem('LOGGED_USER', JSON.stringify(newUser));
 
-    router.replace('/(tabs)/store');
+    // 🔔 notificação ao admin (mantém isto)
+    const raw = await AsyncStorage.getItem(NOTIFICATIONS_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+
+    list.push({
+      id: Date.now().toString(),
+      userEmail: 'ADMIN',
+      message: 'Novo pedido de registo pendente.',
+      read: false,
+      createdAt: Date.now(),
+    });
+
+    await AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(list));
+
+    Alert.alert(
+      role === 'cliente' ? 'Conta criada' : 'Pedido enviado',
+      role === 'cliente'
+        ? 'A sua conta foi criada com sucesso.'
+        : 'A sua conta será analisada pelo administrador.'
+    );
+
+    router.replace('/login');
   };
 
   return (
@@ -143,18 +167,9 @@ export default function CreateAccount() {
           </View>
 
           {/* Botão */}
+          <View style={{ height: 20 }} />
           <Pressable style={styles.button} onPress={handleCreateAccount}>
             <Text style={styles.buttonText}>Pronto</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.button, styles.secondaryButton]}
-            onPress={async (): Promise<void> => {
-              const data = await AsyncStorage.getItem('USERS');
-              Alert.alert('USERS', data ?? 'vazio');
-            }}
-          >
-            <Text style={styles.buttonText}>Ver users</Text>
           </Pressable>
 
           {/* Cancelar */}

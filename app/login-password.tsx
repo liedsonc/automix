@@ -1,8 +1,9 @@
+import { ADMIN } from '@/data/admin';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
+import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 
 type User = {
   id?: string;
@@ -35,6 +36,26 @@ export default function LoginPassword() {
   }, [email]);
 
   const handleLogin = async () => {
+    // Admin fast-path
+    if (email === ADMIN.email && password === ADMIN.password) {
+      await AsyncStorage.setItem('LOGGED_USER', JSON.stringify(ADMIN));
+      await AsyncStorage.setItem('USER_ROLE', 'admin');
+      router.replace('/(tabs)/store');
+      return;
+    }
+
+    const pendingRaw = await AsyncStorage.getItem('REGISTRATION_REQUESTS');
+    const pending = pendingRaw ? JSON.parse(pendingRaw) : [];
+    const isPending = pending.find((p: any) => p.email === email);
+
+    if (isPending) {
+      Alert.alert(
+        'Conta pendente',
+        'A sua conta ainda não foi aprovada pelo administrador.'
+      );
+      return;
+    }
+
     const data = await AsyncStorage.getItem('USERS');
     const users = JSON.parse(data || '[]');
     const user = users.find((u: User) => u.email === email);
@@ -53,17 +74,8 @@ export default function LoginPassword() {
       return;
     }
 
-    // Login OK
-    const normalizedUser: Required<User> = {
-      id: user.id ?? Date.now().toString(),
-      name: user.name,
-      email: user.email,
-      password: user.password,
-      avatar: user.avatar ?? '',
-      role: user.role ?? 'cliente',
-    };
-
-    await AsyncStorage.setItem('LOGGED_USER', JSON.stringify(normalizedUser));
+    await AsyncStorage.setItem('LOGGED_USER', JSON.stringify(user));
+    await AsyncStorage.setItem('USER_ROLE', user.role ?? 'cliente');
     router.replace('/(tabs)/store');
   };
 
@@ -76,6 +88,11 @@ export default function LoginPassword() {
           {/* BOLHAS */}
           <View style={styles.blobLight} />
           <View style={styles.blobDark} />
+
+          {/* Back Arrow */}
+          <Pressable onPress={() => router.replace('/')} style={styles.backArrow}>
+            <Text style={{ fontSize: 28, color: '#0A4CFF' }}>{'←'}</Text>
+          </Pressable>
 
           {/* CONTEÚDO */}
           <View style={styles.content}>
@@ -131,6 +148,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
+  backArrow: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
+    padding: 8,
+  },
   /* BOLHAS */
   blobLight: {
     position: 'absolute',

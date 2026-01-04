@@ -3,12 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cartEventEmitter } from '../../utils/cartEvents';
@@ -18,7 +19,10 @@ type CartItem = {
   name: string;
   price: number;
   quantity: number;
+  stock: number;
   image: string;
+  discount?: boolean;
+  discountValue?: number;
 };
 
 type WishlistItem = {
@@ -27,35 +31,72 @@ type WishlistItem = {
   price: number;
   stock: number;
   image: string;
+  discount?: boolean;
+  discountValue?: number;
 };
 
 const CART_KEY = 'CART';
 const WISHLIST_KEY = 'WISHLIST';
+const formatCurrency = (value: number) => `€${value.toFixed(2)}`;
+
+const getFinalPrice = (item: CartItem) => {
+  if (!item.discount || !item.discountValue) return item.price;
+  return item.price - (item.price * item.discountValue) / 100;
+};
 
 export default function Cart() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [address, setAddress] = useState('');
+  const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
     loadAll();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      const checkRole = async () => {
+        try {
+          const stored = await AsyncStorage.getItem('LOGGED_USER');
+          const role = stored ? JSON.parse(stored)?.role : null;
+
+          if (role !== 'cliente') {
+            setAllowed(false);
+            Alert.alert('Sem permissão', 'Apenas clientes podem aceder ao carrinho');
+            router.replace('/(tabs)/store');
+            return;
+          }
+
+          setAllowed(true);
+          loadAll();
+        } catch {
+          setAllowed(false);
+          router.replace('/(tabs)/store');
+        }
+      };
+
+      checkRole();
+    }, [])
+  );
+
+  if (allowed === false) return null;
+
   const loadAddress = async () => {
     try {
       const stored = await AsyncStorage.getItem('DELIVERY_ADDRESS');
-      setAddress(stored || 'Definir morada');
+      if (stored) {
+        const data = JSON.parse(stored);
+        const parts = [data.address, data.city, data.postalCode, data.country].filter(Boolean);
+        setAddress(parts.length > 0 ? parts.join(', ') : 'Definir morada');
+      } else {
+        setAddress('Definir morada');
+      }
     } catch {
       setAddress('Definir morada');
     }
   };
-
-  useFocusEffect(
-    useCallback(() => {
-      loadAll();
-    }, [])
-  );
 
   const loadCart = async () => {
     try {
@@ -95,13 +136,24 @@ export default function Cart() {
   };
 
   const updateQuantity = async (productId: number, quantity: number) => {
+    const item = cartItems.find(i => i.productId === productId);
+    if (!item) return;
+
+    if (quantity > item.stock) {
+      Alert.alert(
+        'Stock insuficiente',
+        `Só existem ${item.stock} unidades disponíveis.`
+      );
+      return;
+    }
+
     if (quantity <= 0) {
       await removeFromCart(productId);
       return;
     }
 
-    const updated = cartItems.map(item =>
-      item.productId === productId ? { ...item, quantity } : item
+    const updated = cartItems.map(i =>
+      i.productId === productId ? { ...i, quantity } : i
     );
 
     setCartItems(updated);
@@ -109,10 +161,10 @@ export default function Cart() {
     cartEventEmitter.emit();
   };
 
-  const total = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const total = cartItems.reduce((sum, item) => {
+    const finalPrice = getFinalPrice(item);
+    return sum + finalPrice * item.quantity;
+  }, 0);
 
   const addWishlistItemToCart = async (item: WishlistItem) => {
     try {
@@ -121,6 +173,13 @@ export default function Cart() {
 
       const existing = current.find(c => c.productId === item.productId);
       if (existing) {
+        if (existing.quantity >= existing.stock) {
+          Alert.alert(
+            'Stock insuficiente',
+            `Só existem ${existing.stock} unidades disponíveis.`
+          );
+          return;
+        }
         existing.quantity += 1;
       } else {
         current.push({
@@ -129,6 +188,9 @@ export default function Cart() {
           price: item.price,
           image: item.image,
           quantity: 1,
+          stock: item.stock,
+          discount: item.discount,
+          discountValue: item.discountValue,
         });
       }
 
@@ -149,6 +211,9 @@ export default function Cart() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </Pressable>
         <Text style={styles.headerTitle}>Carrinho</Text>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{cartItems.length}</Text>
@@ -158,9 +223,7 @@ export default function Cart() {
       <View style={styles.addressCard}>
         <View>
           <Text style={styles.addressTitle}>Morada de entrega</Text>
-          <Text style={styles.addressText}>
-            {address}
-          </Text>
+          <Text style={styles.addressText}>{address}</Text>
         </View>
         <Pressable style={styles.editBtn} onPress={() => router.push('/settings/address')}>
           <Ionicons name="pencil" size={18} color="#fff" />
@@ -186,7 +249,14 @@ export default function Cart() {
 
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemPrice}>€{item.price.toFixed(2)}</Text>
+                  {item.discount && item.discountValue ? (
+                    <View>
+                      <Text style={styles.oldPrice}>{formatCurrency(item.price)}</Text>
+                      <Text style={styles.itemPrice}>{formatCurrency(getFinalPrice(item))}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.itemPrice}>{formatCurrency(item.price)}</Text>
+                  )}
                 </View>
 
                 <View style={styles.rightControls}>
@@ -196,7 +266,18 @@ export default function Cart() {
 
                   <Text style={styles.quantity}>{item.quantity}</Text>
 
-                  <Pressable onPress={() => updateQuantity(item.productId, item.quantity + 1)}>
+                  <Pressable
+                    onPress={() => {
+                      if (item.quantity >= item.stock) {
+                        Alert.alert(
+                          'Stock máximo atingido',
+                          `Só existem ${item.stock} unidades disponíveis.`
+                        );
+                        return;
+                      }
+                      updateQuantity(item.productId, item.quantity + 1);
+                    }}
+                  >
                     <Ionicons name="add-circle-outline" size={24} color="#0A4CFF" />
                   </Pressable>
 
@@ -226,7 +307,7 @@ export default function Cart() {
 
                 <View style={styles.wishlistInfo}>
                   <Text style={styles.wishlistName}>{item.name}</Text>
-                  <Text style={styles.wishlistPrice}>€{item.price.toFixed(2)}</Text>
+                  <Text style={styles.wishlistPrice}>{formatCurrency(item.price)}</Text>
                   <Text style={styles.wishlistStock}>{item.stock} em Stock</Text>
                 </View>
 
@@ -243,12 +324,13 @@ export default function Cart() {
         <View style={styles.totalRow}>
           <View style={styles.totalGroup}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>€{total.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
           </View>
 
           <Pressable
             style={[styles.checkoutBtn, cartItems.length === 0 && styles.checkoutBtnDisabled]}
             disabled={cartItems.length === 0}
+            onPress={() => router.push('/checkout')}
           >
             <Text style={[styles.checkoutText, cartItems.length === 0 && styles.checkoutTextDisabled]}>
               Pagar
@@ -275,10 +357,14 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     gap: 8,
   },
+  backButton: {
+    marginRight: 4,
+  },
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
     color: '#000',
+    flex: 1,
   },
   badge: {
     backgroundColor: '#EEF2FF',
@@ -323,10 +409,6 @@ const styles = StyleSheet.create({
   },
 
   /* LIST */
-  body: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
   itemsList: {
     paddingBottom: 140,
   },
@@ -366,6 +448,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: '#000',
+  },
+  oldPrice: {
+    fontSize: 12,
+    color: '#999',
+    textDecorationLine: 'line-through',
+    marginBottom: 2,
   },
   rightControls: {
     flexDirection: 'row',

@@ -1,3 +1,4 @@
+import { ADMIN } from '@/data/admin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -9,10 +10,20 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
 
   const handleNext = async () => {
+    // ✅ ADMIN primeiro
+    if (email === ADMIN.email) {
+      router.push({
+        pathname: '/login-password',
+        params: { email },
+      });
+      return;
+    }
+
+    // 👇 Clientes / Fornecedores
     const data = await AsyncStorage.getItem('USERS');
     const users = data ? JSON.parse(data) : [];
 
-    const user = users.find(u => u.email === email);
+    const user = users.find((u: any) => u.email === email);
 
     if (!user) {
       Alert.alert('Erro', 'Email não encontrado');
@@ -34,6 +45,11 @@ export default function LoginScreen() {
           {/* Blobs decorativos */}
           <View style={styles.topBlob} />
           <View style={styles.bottomBlob} />
+
+          {/* Back Arrow */}
+          <Pressable onPress={() => router.replace('/')} style={styles.backArrow}>
+            <Text style={{ fontSize: 28, color: '#0A4CFF' }}>{'←'}</Text>
+          </Pressable>
 
           {/* Conteúdo */}
           <View style={styles.content}>
@@ -141,6 +157,13 @@ const styles = StyleSheet.create({
     color: '#777',
   },
 
+  backArrow: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
+    padding: 8,
+  },
   /* BLOBS */
   topBlob: {
     position: 'absolute',

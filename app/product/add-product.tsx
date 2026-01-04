@@ -122,7 +122,12 @@ export default function AddProductScreen() {
 
       await AsyncStorage.setItem('PRODUCTS', JSON.stringify(products));
 
-      Alert.alert('Sucesso', 'Produto criado!');
+      Alert.alert('Sucesso', 'Produto criado!', [
+        {
+          text: 'OK',
+          onPress: () => router.push('/store'),
+        },
+      ]);
 
       setName('');
       setDescription('');

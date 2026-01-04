@@ -3,13 +3,13 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,6 +25,17 @@ type Product = {
   discountValue: number;
   createdAt: string;
   category?: string;
+};
+
+const RECENT_PRODUCTS_KEY = 'RECENT_PRODUCTS';
+
+type RecentProduct = {
+  id: number;
+  name: string;
+  image: string;
+  price: number;
+  category?: string;
+  viewedAt: number;
 };
 
 const PRODUCTS_KEY = 'PRODUCTS';
@@ -48,6 +59,7 @@ export default function ExploreScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
   const [storedPrevTab, setStoredPrevTab] = useState<string | null>(null);
   const [storedLastTab, setStoredLastTab] = useState<string | null>(null);
   const [loadingFrom, setLoadingFrom] = useState(true);
@@ -58,6 +70,19 @@ export default function ExploreScreen() {
 
   useFocusEffect(() => {
     AsyncStorage.setItem('LAST_TAB', '/(tabs)/explore').catch(() => {});
+  });
+
+  useFocusEffect(() => {
+    const loadRecent = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(RECENT_PRODUCTS_KEY);
+        setRecentProducts(stored ? JSON.parse(stored) : []);
+      } catch {
+        setRecentProducts([]);
+      }
+    };
+
+    loadRecent();
   });
 
   useEffect(() => {
@@ -143,13 +168,6 @@ export default function ExploreScreen() {
             onChangeText={setSearch}
             style={styles.searchInput}
           />
-
-          <Pressable
-            style={styles.filterButton}
-            onPress={() => setFilterVisible(true)}
-          >
-            <Text style={{ fontSize: 20 }}>≡</Text>
-          </Pressable>
         </View>
 
         {/* RESULTADOS DA PESQUISA */}
@@ -181,21 +199,37 @@ export default function ExploreScreen() {
           </View>
         ) : (
           <>
-            {/* Histórico de Pesquisa */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Histórico de Pesquisa</Text>
-                <Text style={styles.trash}>🗑</Text>
-              </View>
+            {search.length === 0 && recentProducts.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Vistos recentemente</Text>
+                </View>
 
-              <View style={styles.chips}>
-                {['Óleo motor', 'Amortecedor', 'Kit Ferramentas', 'Radiador'].map(item => (
-                  <View key={item} style={styles.chip}>
-                    <Text>{item}</Text>
-                  </View>
-                ))}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {recentProducts.map(product => (
+                    <Pressable
+                      key={product.id}
+                      style={styles.recentCard}
+                      onPress={() =>
+                        router.push(`/product/${product.id}?from=/explore`)
+                      }
+                    >
+                      <Image
+                        source={{ uri: product.image }}
+                        style={styles.recentImage}
+                        contentFit="contain"
+                      />
+                      <Text style={styles.recentName} numberOfLines={1}>
+                        {product.name}
+                      </Text>
+                      <Text style={styles.recentPrice}>
+                        €{product.price.toFixed(2)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
               </View>
-            </View>
+            )}
 
             {/* Descobrir */}
             <View style={styles.section}>
@@ -375,6 +409,24 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     marginTop: 4,
+  },
+  recentCard: {
+    width: 140,
+    marginRight: 12,
+  },
+  recentImage: {
+    width: '100%',
+    height: 110,
+    marginBottom: 6,
+  },
+  recentName: {
+    fontSize: 13,
+    color: '#555',
+  },
+  recentPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,
