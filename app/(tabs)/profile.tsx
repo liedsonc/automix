@@ -563,7 +563,7 @@ export default function Profile() {
                 justifyContent: 'center',
                 gap: 10,
               }}
-              onPress={() => router.push('/supplier/restock')}
+              onPress={() => router.push('/(tabs)/supplier/restock')}
             >
               <Ionicons name="alert-circle-outline" size={24} color="#fff" />
               <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
