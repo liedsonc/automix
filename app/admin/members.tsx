@@ -1,7 +1,7 @@
 import { useAdminGuard } from '@/hooks/useAdminGuard';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -32,13 +32,17 @@ type Member = {
 export default function AdminMembers() {
   useAdminGuard();
   const router = useRouter();
+  const { filter: filterParam } = useLocalSearchParams<{ filter?: string }>();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'todos' | 'pendentes'>('todos');
+  const [filter, setFilter] = useState<'todos' | 'pendentes'>(filterParam === 'pendentes' ? 'pendentes' : 'todos');
 
   useEffect(() => {
     loadMembers();
-  }, []);
+    if (filterParam === 'pendentes') {
+      setFilter('pendentes');
+    }
+  }, [filterParam]);
 
   const loadMembers = async () => {
     try {

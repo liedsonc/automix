@@ -74,7 +74,7 @@ export default function AddProductScreen() {
   }, []);
 
   useEffect(() => {
-    if (!loadingUser && (!user || user.role !== 'fornecedor')) {
+    if (!loadingUser && (!user || (user.role !== 'fornecedor' && user.role !== 'admin'))) {
       router.replace('/store');
     }
   }, [loadingUser, router, user]);
@@ -152,7 +152,7 @@ export default function AddProductScreen() {
     );
   }
 
-  if (!user || user.role !== 'fornecedor') {
+  if (!user || (user.role !== 'fornecedor' && user.role !== 'admin')) {
     return null;
   }
 
