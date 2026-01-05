@@ -1,20 +1,20 @@
-import { getCurrentUser } from '@/utils/getCurrentUser';
 import { productImages } from '@/constants/images';
+import { getCurrentUser } from '@/utils/getCurrentUser';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    Alert,
-    Image,
-    Modal,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
 type Product = {
@@ -27,9 +27,48 @@ type Product = {
   description?: string;
 };
 
+const getProductImageSource = (productId: number, imageUri: string) => {
+  const imageMap: Record<number, keyof typeof productImages> = {
+    1: 'bateria_varta_a7',
+    2: 'brembo_disco',
+    3: 'filtro_oleo_mann',
+    4: 'elf_evolution',
+    5: 'trw_amortecedor',
+    6: 'tyc_farol',
+    7: 'osram_h7_adaptador',
+    8: 'bateria_varta_e44',
+    9: 'bosch_injector',
+    10: 'febi_filtros',
+    11: 'meyle_bracos',
+    12: 'ridex_alternador',
+  };
+
+  const imageKey = imageMap[productId];
+  if (imageKey && productImages[imageKey]) {
+    return productImages[imageKey];
+  }
+  
+  if (imageUri && imageUri.startsWith('http')) {
+    return { uri: imageUri };
+  }
+  
+  return { uri: imageUri };
+};
+
+type StockRequest = {
+  id: string;
+  productId: number;
+  requestedQuantity: number;
+  message: string;
+  createdAt: string;
+  read: boolean;
+};
+
 export default function RestockScreen() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
+  const [allSupplierProducts, setAllSupplierProducts] = useState<Product[]>([]);
+  const [stockRequests, setStockRequests] = useState<StockRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -63,6 +102,41 @@ export default function RestockScreen() {
     }
 
     await loadProducts(user);
+    await loadStockRequests(user);
+  };
+
+  const loadStockRequests = async (user: any) => {
+    try {
+      const supplierId = String(user.id ?? user?.user?.id ?? '');
+      const stored = await AsyncStorage.getItem('NOTIFICATIONS');
+      if (!stored) {
+        setStockRequests([]);
+        return;
+      }
+
+      const notifications = JSON.parse(stored);
+      const requests = notifications
+        .filter((n: any) => 
+          n.type === 'stock_request' && 
+          (String(n.userId) === supplierId || String(n.userEmail) === String(user.email || user.id))
+        )
+        .map((n: any) => ({
+          id: n.id,
+          productId: n.productId,
+          requestedQuantity: n.requestedQuantity || 0,
+          message: n.message,
+          createdAt: n.createdAt,
+          read: n.read || false,
+        }))
+        .sort((a: StockRequest, b: StockRequest) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+      setStockRequests(requests);
+    } catch (error) {
+      console.error('Erro ao carregar pedidos de stock:', error);
+      setStockRequests([]);
+    }
   };
 
   const loadProducts = async (user: any) => {
@@ -76,10 +150,11 @@ export default function RestockScreen() {
 
       const allProducts: Product[] = JSON.parse(stored);
       const supplierProducts = allProducts.filter(
-        p => String(p.supplierId) === supplierId && p.stock === 0
+        p => String(p.supplierId) === supplierId && (Number(p.stock) === 0 || !p.stock)
       );
 
       setProducts(supplierProducts);
+      setAllSupplierProducts(allProducts.filter(p => String(p.supplierId) === supplierId));
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
       Alert.alert('Erro', 'Não foi possível carregar os produtos');
@@ -90,7 +165,7 @@ export default function RestockScreen() {
 
   const openRestockModal = (product: Product) => {
     setSelectedProduct(product);
-    setNewStock(String(product.stock));
+    setNewStock(String(product.stock || 0));
     setModalVisible(true);
   };
 
@@ -120,6 +195,19 @@ export default function RestockScreen() {
       // Remover produto da lista se o stock deixou de ser 0
       if (stockValue > 0) {
         setProducts(prev => prev.filter(p => p.id !== selectedProduct.id));
+        // Mark related stock requests as read
+        const stored = await AsyncStorage.getItem('NOTIFICATIONS');
+        if (stored) {
+          const notifications = JSON.parse(stored);
+          const updated = notifications.map((n: any) => {
+            if (n.type === 'stock_request' && n.productId === selectedProduct.id) {
+              return { ...n, read: true };
+            }
+            return n;
+          });
+          await AsyncStorage.setItem('NOTIFICATIONS', JSON.stringify(updated));
+          await loadStockRequests(await getCurrentUser());
+        }
       } else {
         // Atualizar lista local se ainda for 0
         setProducts(prev =>
@@ -170,6 +258,46 @@ export default function RestockScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.container}>
+        {/* Stock Requests Section */}
+        {stockRequests.length > 0 && (
+          <View style={styles.requestsSection}>
+            <Text style={styles.sectionTitle}>Pedidos de Stock da Administração</Text>
+            {stockRequests.map(request => {
+              const product = allSupplierProducts.find(p => p.id === request.productId);
+              
+              return (
+                <View key={request.id} style={styles.requestCard}>
+                  <View style={styles.requestHeader}>
+                    <Ionicons name="notifications" size={20} color="#f59e0b" />
+                    <Text style={styles.requestTitle}>Pedido de Reposição</Text>
+                    {!request.read && <View style={styles.unreadDot} />}
+                  </View>
+                  <Text style={styles.requestMessage}>{request.message}</Text>
+                  {product && (
+                    <Pressable
+                      style={styles.requestProductBtn}
+                      onPress={() => {
+                        setSelectedProduct(product);
+                        setNewStock(String(request.requestedQuantity));
+                        setModalVisible(true);
+                      }}
+                    >
+                      <Text style={styles.requestProductBtnText}>
+                        Repor {request.requestedQuantity} unidades
+                      </Text>
+                    </Pressable>
+                  )}
+                  <Text style={styles.requestDate}>
+                    {new Date(request.createdAt).toLocaleString()}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Out of Stock Products Section */}
+        <Text style={styles.sectionTitle}>Produtos sem Stock</Text>
         {products.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="cube-outline" size={64} color="#999" />
@@ -190,14 +318,14 @@ export default function RestockScreen() {
                   <View
                     style={[
                       styles.stockBadge,
-                      { backgroundColor: getStockColor(product.stock) },
+                      { backgroundColor: getStockColor(Number(product.stock) || 0) },
                     ]}
                   >
                     <Text style={styles.stockBadgeText}>
-                      {getStockLabel(product.stock)}
+                      {getStockLabel(Number(product.stock) || 0)}
                     </Text>
                   </View>
-                  <Text style={styles.stockValue}>{product.stock} unidades</Text>
+                  <Text style={styles.stockValue}>{Number(product.stock) || 0} unidades</Text>
                 </View>
               </View>
 
@@ -231,7 +359,7 @@ export default function RestockScreen() {
               <>
                 <Text style={styles.modalProductName}>{selectedProduct.name}</Text>
                 <Text style={styles.modalCurrentStock}>
-                  Stock atual: {selectedProduct.stock} unidades
+                  Stock atual: {Number(selectedProduct.stock) || 0} unidades
                 </Text>
 
                 <Text style={styles.inputLabel}>Novo stock</Text>
@@ -447,5 +575,63 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+  },
+  requestsSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#000',
+    marginBottom: 12,
+  },
+  requestCard: {
+    backgroundColor: '#FFF9E6',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  requestHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  requestTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
+  },
+  requestMessage: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  requestProductBtn: {
+    backgroundColor: '#f59e0b',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requestProductBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  requestDate: {
+    fontSize: 12,
+    color: '#999',
   },
 });
