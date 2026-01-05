@@ -370,21 +370,30 @@ export default function Profile() {
           <>
             {/* Estatísticas Rápidas */}
             <View style={styles.statsContainer}>
-              <View style={styles.statCard}>
+              <Pressable 
+                style={styles.statCard}
+                onPress={() => router.push('/admin/members')}
+              >
                 <Ionicons name="people" size={24} color="#0A4CFF" />
                 <Text style={styles.statValue}>{adminStats.users}</Text>
                 <Text style={styles.statLabel}>Usuários</Text>
-              </View>
-              <View style={styles.statCard}>
+              </Pressable>
+              <Pressable 
+                style={styles.statCard}
+                onPress={() => router.push('/admin/stock')}
+              >
                 <Ionicons name="cube" size={24} color="#16a34a" />
                 <Text style={styles.statValue}>{adminStats.products}</Text>
                 <Text style={styles.statLabel}>Produtos</Text>
-              </View>
-              <View style={styles.statCard}>
+              </Pressable>
+              <Pressable 
+                style={styles.statCard}
+                onPress={() => router.push('/(tabs)/admin/orders')}
+              >
                 <Ionicons name="cart" size={24} color="#f59e0b" />
                 <Text style={styles.statValue}>{adminStats.orders}</Text>
                 <Text style={styles.statLabel}>Pedidos</Text>
-              </View>
+              </Pressable>
             </View>
 
             {/* Ações Rápidas */}
