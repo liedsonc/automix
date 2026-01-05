@@ -1,4 +1,5 @@
 import categories from '@/data/categories.json';
+import { productImages } from '@/constants/images';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -86,6 +87,34 @@ const normalizeProduct = (product: any): Product => {
     discountValue: hasDiscount ? rawDiscount : 0,
     categoryId: product.categoryId ? Number(product.categoryId) : undefined,
   };
+};
+
+const getProductImageSource = (productId: number, imageUri: string) => {
+  const imageMap: Record<number, keyof typeof productImages> = {
+    1: 'bateria_varta_a7',
+    2: 'brembo_disco',
+    3: 'filtro_oleo_mann',
+    4: 'elf_evolution',
+    5: 'trw_amortecedor',
+    6: 'tyc_farol',
+    7: 'osram_h7_adaptador',
+    8: 'bateria_varta_e44',
+    9: 'bosch_injector',
+    10: 'febi_filtros',
+    11: 'meyle_bracos',
+    12: 'ridex_alternador',
+  };
+
+  const imageKey = imageMap[productId];
+  if (imageKey && productImages[imageKey]) {
+    return productImages[imageKey];
+  }
+  
+  if (imageUri && imageUri.startsWith('http')) {
+    return { uri: imageUri };
+  }
+  
+  return { uri: imageUri };
 };
 
 const getFinalPrice = (product: Product) => {
@@ -595,7 +624,7 @@ export default function Profile() {
               <>
                 {displayedProducts.map(item => (
                 <View key={item.id} style={styles.productCard}>
-                  <Image source={{ uri: item.image }} style={styles.productImage} />
+                  <Image source={getProductImageSource(item.id, item.image)} style={styles.productImage} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.productName}>{item.name}</Text>
                     {item.discount ? (

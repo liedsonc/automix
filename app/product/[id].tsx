@@ -1,4 +1,5 @@
 import categories from '@/data/categories.json';
+import { productImages } from '@/constants/images';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -60,6 +61,34 @@ const normalizeProduct = (product: any): Product => {
 
 const getFinalPrice = (price: number, discountValue: number) => {
   return price - (price * discountValue) / 100;
+};
+
+const getProductImageSource = (productId: number, imageUri: string) => {
+  const imageMap: Record<number, keyof typeof productImages> = {
+    1: 'bateria_varta_a7',
+    2: 'brembo_disco',
+    3: 'filtro_oleo_mann',
+    4: 'elf_evolution',
+    5: 'trw_amortecedor',
+    6: 'tyc_farol',
+    7: 'osram_h7_adaptador',
+    8: 'bateria_varta_e44',
+    9: 'bosch_injector',
+    10: 'febi_filtros',
+    11: 'meyle_bracos',
+    12: 'ridex_alternador',
+  };
+
+  const imageKey = imageMap[productId];
+  if (imageKey && productImages[imageKey]) {
+    return productImages[imageKey];
+  }
+  
+  if (imageUri && imageUri.startsWith('http')) {
+    return { uri: imageUri };
+  }
+  
+  return { uri: imageUri };
 };
 
 export default function ProductScreen() {
@@ -466,7 +495,7 @@ export default function ProductScreen() {
         </Pressable>
 
         <Image 
-          source={{ uri: product.image }} 
+          source={getProductImageSource(product.id, product.image)} 
           style={[styles.image, product.stock === 0 && styles.outOfStockImage]} 
         />
 

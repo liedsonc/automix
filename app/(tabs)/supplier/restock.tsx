@@ -1,4 +1,5 @@
 import { getCurrentUser } from '@/utils/getCurrentUser';
+import { productImages } from '@/constants/images';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -177,7 +178,7 @@ export default function RestockScreen() {
         ) : (
           products.map(product => (
             <View key={product.id} style={styles.productCard}>
-              <Image source={{ uri: product.image }} style={styles.productImage} />
+              <Image source={getProductImageSource(product.id, product.image)} style={styles.productImage} />
               
               <View style={styles.productInfo}>
                 <Text style={styles.productName} numberOfLines={2}>

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cartEventEmitter } from '../../utils/cartEvents';
+import { productImages } from '@/constants/images';
 
 type CartItem = {
   productId: number;
@@ -42,6 +43,35 @@ const formatCurrency = (value: number) => `€${value.toFixed(2)}`;
 const getFinalPrice = (item: CartItem) => {
   if (!item.discount || !item.discountValue) return item.price;
   return item.price - (item.price * item.discountValue) / 100;
+};
+
+const getProductImageSource = (productId: number, imageUri: string) => {
+  const imageMap: Record<number, keyof typeof productImages> = {
+    1: 'bateria_varta_a7',
+    2: 'brembo_disco',
+    3: 'filtro_oleo_mann',
+    4: 'elf_evolution',
+    5: 'trw_amortecedor',
+    6: 'tyc_farol',
+    7: 'osram_h7_adaptador',
+    8: 'bateria_varta_e44',
+    9: 'bosch_injector',
+    10: 'febi_filtros',
+    11: 'meyle_bracos',
+    12: 'ridex_alternador',
+  };
+
+  const imageKey = imageMap[productId];
+  if (imageKey && productImages[imageKey]) {
+    return productImages[imageKey];
+  }
+  
+  if (imageUri && imageUri.startsWith('http')) {
+    return { uri: imageUri };
+  }
+  
+  const finalUri = imageUri && imageUri.trim().length > 0 ? imageUri : 'https://via.placeholder.com/150';
+  return { uri: finalUri };
 };
 
 export default function Cart() {
@@ -240,12 +270,7 @@ export default function Cart() {
           <View style={styles.itemsList}>
             {cartItems.map(item => (
               <View key={item.productId} style={styles.cartItem}>
-                {(() => {
-                  const imageUri = item.image && item.image.trim().length > 0
-                    ? item.image
-                    : 'https://via.placeholder.com/150';
-                  return <Image source={{ uri: imageUri }} style={styles.itemImage} />;
-                })()}
+                <Image source={getProductImageSource(item.productId, item.image)} style={styles.itemImage} />
 
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.name}</Text>
@@ -298,12 +323,7 @@ export default function Cart() {
           ) : (
             wishlistItems.map(item => (
               <View key={item.productId} style={styles.wishlistItem}>
-                {(() => {
-                  const imageUri = item.image && item.image.trim().length > 0
-                    ? item.image
-                    : 'https://via.placeholder.com/150';
-                  return <Image source={{ uri: imageUri }} style={styles.wishlistImage} />;
-                })()}
+                <Image source={getProductImageSource(item.productId, item.image)} style={styles.wishlistImage} />
 
                 <View style={styles.wishlistInfo}>
                   <Text style={styles.wishlistName}>{item.name}</Text>

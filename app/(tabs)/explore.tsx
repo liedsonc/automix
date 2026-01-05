@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { productImages } from '@/constants/images';
 
 type Product = {
   id: number;
@@ -39,6 +40,34 @@ type RecentProduct = {
 };
 
 const PRODUCTS_KEY = 'PRODUCTS';
+
+const getProductImageSource = (productId: number, imageUri: string) => {
+  const imageMap: Record<number, keyof typeof productImages> = {
+    1: 'bateria_varta_a7',
+    2: 'brembo_disco',
+    3: 'filtro_oleo_mann',
+    4: 'elf_evolution',
+    5: 'trw_amortecedor',
+    6: 'tyc_farol',
+    7: 'osram_h7_adaptador',
+    8: 'bateria_varta_e44',
+    9: 'bosch_injector',
+    10: 'febi_filtros',
+    11: 'meyle_bracos',
+    12: 'ridex_alternador',
+  };
+
+  const imageKey = imageMap[productId];
+  if (imageKey && productImages[imageKey]) {
+    return productImages[imageKey];
+  }
+  
+  if (imageUri && imageUri.startsWith('http')) {
+    return { uri: imageUri };
+  }
+  
+  return { uri: imageUri };
+};
 
 const normalizeProduct = (product: any): Product => ({
   id: Number(product.id ?? 0),
@@ -180,7 +209,7 @@ export default function ExploreScreen() {
                 onPress={() => router.push(`/product/${product.id}?from=/explore`)}
               >
                 <Image
-                  source={{ uri: product.image }}
+                  source={getProductImageSource(product.id, product.image)}
                   style={styles.resultImage}
                   contentFit="contain"
                 />
@@ -215,7 +244,7 @@ export default function ExploreScreen() {
                       }
                     >
                       <Image
-                        source={{ uri: product.image }}
+                        source={getProductImageSource(product.id, product.image)}
                         style={styles.recentImage}
                         contentFit="contain"
                       />
@@ -243,7 +272,7 @@ export default function ExploreScreen() {
                     onPress={() => router.push(`/product/${product.id}?from=/explore`)}
                   >
                     <Image
-                      source={{ uri: product.image }}
+                      source={getProductImageSource(product.id, product.image)}
                       style={styles.discoverImage}
                       contentFit="contain"
                     />
