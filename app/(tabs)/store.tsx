@@ -10,7 +10,7 @@ import {
   View
 } from 'react-native';
 
-import { categoryImages } from '@/constants/images';
+import { categoryImages, productImages } from '@/constants/images';
 import categories from '@/data/categories.json';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -35,6 +35,224 @@ type Product = {
 };
 
 const PRODUCTS_KEY = 'PRODUCTS';
+
+const getProductImageSource = (product: Product) => {
+  const imageMap: Record<number, keyof typeof productImages> = {
+    1: 'bateria_varta_a7',
+    2: 'brembo_disco',
+    3: 'filtro_oleo_mann',
+    4: 'elf_evolution',
+    5: 'trw_amortecedor',
+    6: 'tyc_farol',
+    7: 'osram_h7_adaptador',
+    8: 'bateria_varta_e44',
+    9: 'bosch_injector',
+    10: 'febi_filtros',
+    11: 'meyle_bracos',
+    12: 'ridex_alternador',
+  };
+
+  const imageKey = imageMap[product.id];
+  if (imageKey && productImages[imageKey]) {
+    return productImages[imageKey];
+  }
+  
+  if (product.image && product.image.startsWith('http')) {
+    return { uri: product.image };
+  }
+  
+  return { uri: product.image };
+};
+
+const seedProducts = async () => {
+  const existing = await AsyncStorage.getItem(PRODUCTS_KEY);
+  if (existing) return;
+
+  const sampleProducts: Product[] = [
+    {
+      id: 1,
+      name: 'Bateria Varta A7',
+      price: 89.99,
+      stock: 15,
+      image: 'local:bateria_varta_a7',
+      description: 'Bateria de alta qualidade para o seu veículo',
+      category: 'Bateria',
+      showInBestSellers: true,
+      showInRecommended: true,
+      discount: true,
+      discountValue: 15,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 2,
+      name: 'Disco de Travão Brembo',
+      price: 125.50,
+      stock: 8,
+      image: 'local:brembo_disco',
+      description: 'Discos de travão de alta performance',
+      category: 'Travões',
+      showInBestSellers: true,
+      showInRecommended: true,
+      discount: false,
+      discountValue: 0,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 3,
+      name: 'Filtro de Óleo Mann',
+      price: 12.99,
+      stock: 45,
+      image: 'local:filtro_oleo_mann',
+      description: 'Filtro de óleo de qualidade premium',
+      category: 'Filtros',
+      showInBestSellers: false,
+      showInRecommended: true,
+      discount: true,
+      discountValue: 20,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 4,
+      name: 'Óleo ELF Evolution',
+      price: 34.99,
+      stock: 30,
+      image: 'local:elf_evolution',
+      description: 'Óleo motor sintético de alta qualidade',
+      category: 'Óleos e Lubrificantes',
+      showInBestSellers: true,
+      showInRecommended: false,
+      discount: true,
+      discountValue: 10,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 5,
+      name: 'Amortecedor TRW',
+      price: 89.99,
+      stock: 12,
+      image: 'local:trw_amortecedor',
+      description: 'Amortecedor de suspensão de qualidade',
+      category: 'Suspensão',
+      showInBestSellers: false,
+      showInRecommended: true,
+      discount: false,
+      discountValue: 0,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 6,
+      name: 'Farol TYC',
+      price: 145.00,
+      stock: 6,
+      image: 'local:tyc_farol',
+      description: 'Farol dianteiro completo',
+      category: 'Iluminação',
+      showInBestSellers: true,
+      showInRecommended: true,
+      discount: true,
+      discountValue: 25,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 7,
+      name: 'Adaptador OSRAM H7',
+      price: 24.99,
+      stock: 20,
+      image: 'local:osram_h7_adaptador',
+      description: 'Adaptador para lâmpadas H7',
+      category: 'Iluminação',
+      showInBestSellers: false,
+      showInRecommended: true,
+      discount: false,
+      discountValue: 0,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 8,
+      name: 'Bateria Varta E44',
+      price: 95.99,
+      stock: 10,
+      image: 'local:bateria_varta_e44',
+      description: 'Bateria de alta capacidade',
+      category: 'Bateria',
+      showInBestSellers: true,
+      showInRecommended: false,
+      discount: true,
+      discountValue: 18,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 9,
+      name: 'Injector Bosch',
+      price: 165.00,
+      stock: 5,
+      image: 'local:bosch_injector',
+      description: 'Injector de combustível de alta precisão',
+      category: 'Motor',
+      showInBestSellers: false,
+      showInRecommended: true,
+      discount: false,
+      discountValue: 0,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 10,
+      name: 'Filtros Febi',
+      price: 18.50,
+      stock: 35,
+      image: 'local:febi_filtros',
+      description: 'Kit de filtros de ar e combustível',
+      category: 'Filtros',
+      showInBestSellers: true,
+      showInRecommended: true,
+      discount: true,
+      discountValue: 12,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 11,
+      name: 'Braços Meyle',
+      price: 75.00,
+      stock: 15,
+      image: 'local:meyle_bracos',
+      description: 'Braços de suspensão reforçados',
+      category: 'Suspensão',
+      showInBestSellers: false,
+      showInRecommended: true,
+      discount: false,
+      discountValue: 0,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 12,
+      name: 'Alternador Ridex',
+      price: 199.99,
+      stock: 4,
+      image: 'local:ridex_alternador',
+      description: 'Alternador de alta performance',
+      category: 'Motor',
+      showInBestSellers: true,
+      showInRecommended: false,
+      discount: true,
+      discountValue: 30,
+      supplierId: 0,
+      createdAt: new Date().toISOString(),
+    },
+  ];
+
+  await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(sampleProducts));
+};
 
 const formatPrice = (value: unknown) => {
   const num = Number(value);
@@ -92,6 +310,7 @@ export default function StoreScreen() {
   const loadProducts = useCallback(async () => {
     try {
       setLoadingProducts(true);
+      await seedProducts();
       const stored = await AsyncStorage.getItem(PRODUCTS_KEY);
       const parsed: Product[] = stored
         ? JSON.parse(stored)
@@ -119,13 +338,17 @@ export default function StoreScreen() {
       ? recommendedProducts
       : visibleProducts;
 
+  const visibleBestSellers = bestSellers.length > 0 ? bestSellers : allProducts.slice(0, 10);
+
   const visiblePromotions =
-    promotionProducts.length > PROMO_VISIBLE
-      ? [...promotionProducts, ...promotionProducts].slice(
-          promoIndex,
-          promoIndex + PROMO_VISIBLE
-        )
-      : promotionProducts;
+    promotionProducts.length > 0
+      ? promotionProducts.length > PROMO_VISIBLE
+        ? [...promotionProducts, ...promotionProducts].slice(
+            promoIndex,
+            promoIndex + PROMO_VISIBLE
+          )
+        : promotionProducts
+      : allProducts.slice(0, 5);
 
   const visibleCategories = sortedCategories;
 
@@ -270,7 +493,7 @@ export default function StoreScreen() {
           {/* Mais vendidos */}
           <Section title="Mais vendidos">
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {bestSellers.map(product => (
+              {visibleBestSellers.map(product => (
                 <Pressable
                   key={product.id}
                   style={styles.bestSellerCard}
@@ -278,7 +501,7 @@ export default function StoreScreen() {
                 >
 
                   <Image
-                    source={{ uri: product.image }}
+                    source={getProductImageSource(product)}
                     style={styles.bestSellerImage}
                     resizeMode="contain"
                   />
@@ -325,7 +548,7 @@ export default function StoreScreen() {
                   )}
 
                   <Image
-                    source={{ uri: product.image }}
+                    source={getProductImageSource(product)}
                     style={styles.offerImage}
                     resizeMode="contain"
                   />
@@ -366,7 +589,7 @@ export default function StoreScreen() {
                   onPress={() => router.push(`/product/${product.id}?from=/store`)}
                 >
                   <Image
-                    source={{ uri: product.image }}
+                    source={getProductImageSource(product)}
                     style={styles.recommendedImage}
                     resizeMode="contain"
                   />
