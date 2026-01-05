@@ -62,8 +62,8 @@ export default function NotificationsScreen() {
       return;
     }
 
-    if (item.userEmail === 'ADMIN') {
-      router.push('/(tabs)/admin/members');
+    if (item.userEmail === 'ADMIN' || item.type === 'supplier_approval') {
+      router.push('/admin/members?filter=pendentes');
       return;
     }
 
