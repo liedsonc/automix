@@ -451,10 +451,7 @@ export default function StoreScreen() {
       </View>
 
       {/* Banner amarelo */}
-      <Pressable
-        onPress={() => router.push('/promo')}
-        style={styles.banner}
-      >
+      <View style={styles.banner}>
         <View>
           <Text style={styles.bannerTitle}>Grandes descontos</Text>
           <Text style={styles.bannerSubtitle}>Até 50%</Text>
@@ -465,7 +462,7 @@ export default function StoreScreen() {
           style={styles.bannerImage}
           resizeMode="contain"
         />
-      </Pressable>
+      </View>
 
       {/* Categorias */}
       <Section
