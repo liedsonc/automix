@@ -72,7 +72,8 @@ export default function CreateAccount() {
     list.push({
       id: Date.now().toString(),
       userEmail: 'ADMIN',
-      message: 'Novo pedido de registo pendente.',
+      message: role === 'fornecedor' ? 'Novo pedido de registo de fornecedor pendente.' : 'Novo pedido de registo pendente.',
+      type: role === 'fornecedor' ? 'supplier_approval' : 'user_approval',
       read: false,
       createdAt: Date.now(),
     });
