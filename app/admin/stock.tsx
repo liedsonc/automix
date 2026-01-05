@@ -129,7 +129,7 @@ export default function AdminStock() {
   };
 
   const handleProductPress = (id: number) => {
-    router.push(`/product/${id}?from=/admin/stock`);
+    router.push(`/admin/product/${id}` as any);
   };
 
   return (
@@ -139,8 +139,16 @@ export default function AdminStock() {
           <Ionicons name="arrow-back" size={22} color="#000" />
         </Pressable>
         <Text style={styles.headerTitle}>Todos os Produtos</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{filteredProducts.length}</Text>
+        <View style={styles.headerRight}>
+          <Pressable
+            style={styles.addButton}
+            onPress={() => router.push('/product/add-product')}
+          >
+            <Ionicons name="add" size={20} color="#fff" />
+          </Pressable>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{filteredProducts.length}</Text>
+          </View>
         </View>
       </View>
 
@@ -261,6 +269,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: '#000',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addButton: {
+    backgroundColor: '#0A4CFF',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   countBadge: {
     backgroundColor: '#EEF2FF',

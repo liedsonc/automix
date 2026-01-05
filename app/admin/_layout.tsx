@@ -6,6 +6,8 @@ export default function AdminStackLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="members" />
       <Stack.Screen name="sem-stock" />
+      <Stack.Screen name="stock" />
+      <Stack.Screen name="product/[id]" />
       <Stack.Screen name="order/[id]" />
     </Stack>
   );
