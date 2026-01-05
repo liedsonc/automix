@@ -24,6 +24,7 @@ type Product = {
   image: string;
   description?: string;
   category?: string;
+  categoryId?: number;
   showInBestSellers?: boolean;
   showInNew?: boolean;
   showInRecommended?: boolean;
@@ -77,6 +78,7 @@ const seedProducts = async () => {
       image: 'local:bateria_varta_a7',
       description: 'Bateria de alta qualidade para o seu veículo',
       category: 'Bateria',
+      categoryId: 5,
       showInBestSellers: true,
       showInRecommended: true,
       discount: true,
@@ -92,6 +94,7 @@ const seedProducts = async () => {
       image: 'local:brembo_disco',
       description: 'Discos de travão de alta performance',
       category: 'Travões',
+      categoryId: 3,
       showInBestSellers: true,
       showInRecommended: true,
       discount: false,
@@ -107,6 +110,7 @@ const seedProducts = async () => {
       image: 'local:filtro_oleo_mann',
       description: 'Filtro de óleo de qualidade premium',
       category: 'Filtros',
+      categoryId: 6,
       showInBestSellers: false,
       showInRecommended: true,
       discount: true,
@@ -122,6 +126,7 @@ const seedProducts = async () => {
       image: 'local:elf_evolution',
       description: 'Óleo motor sintético de alta qualidade',
       category: 'Óleos e Lubrificantes',
+      categoryId: 10,
       showInBestSellers: true,
       showInRecommended: false,
       discount: true,
@@ -137,6 +142,7 @@ const seedProducts = async () => {
       image: 'local:trw_amortecedor',
       description: 'Amortecedor de suspensão de qualidade',
       category: 'Suspensão',
+      categoryId: 8,
       showInBestSellers: false,
       showInRecommended: true,
       discount: false,
@@ -152,6 +158,7 @@ const seedProducts = async () => {
       image: 'local:tyc_farol',
       description: 'Farol dianteiro completo',
       category: 'Iluminação',
+      categoryId: 7,
       showInBestSellers: true,
       showInRecommended: true,
       discount: true,
@@ -167,6 +174,7 @@ const seedProducts = async () => {
       image: 'local:osram_h7_adaptador',
       description: 'Adaptador para lâmpadas H7',
       category: 'Iluminação',
+      categoryId: 7,
       showInBestSellers: false,
       showInRecommended: true,
       discount: false,
@@ -182,6 +190,7 @@ const seedProducts = async () => {
       image: 'local:bateria_varta_e44',
       description: 'Bateria de alta capacidade',
       category: 'Bateria',
+      categoryId: 5,
       showInBestSellers: true,
       showInRecommended: false,
       discount: true,
@@ -197,6 +206,7 @@ const seedProducts = async () => {
       image: 'local:bosch_injector',
       description: 'Injector de combustível de alta precisão',
       category: 'Motor',
+      categoryId: 1,
       showInBestSellers: false,
       showInRecommended: true,
       discount: false,
@@ -212,6 +222,7 @@ const seedProducts = async () => {
       image: 'local:febi_filtros',
       description: 'Kit de filtros de ar e combustível',
       category: 'Filtros',
+      categoryId: 6,
       showInBestSellers: true,
       showInRecommended: true,
       discount: true,
@@ -227,6 +238,7 @@ const seedProducts = async () => {
       image: 'local:meyle_bracos',
       description: 'Braços de suspensão reforçados',
       category: 'Suspensão',
+      categoryId: 8,
       showInBestSellers: false,
       showInRecommended: true,
       discount: false,
@@ -242,6 +254,7 @@ const seedProducts = async () => {
       image: 'local:ridex_alternador',
       description: 'Alternador de alta performance',
       category: 'Motor',
+      categoryId: 1,
       showInBestSellers: true,
       showInRecommended: false,
       discount: true,
@@ -278,6 +291,7 @@ const normalizeProduct = (product: any): Product => {
     image: String(product.image ?? ''),
     description: product.description ?? '',
     category: product.category,
+    categoryId: product.categoryId ? Number(product.categoryId) : undefined,
     showInBestSellers: product.showInBestSellers,
     showInNew: product.showInNew,
     showInRecommended: product.showInRecommended,
@@ -468,7 +482,7 @@ export default function StoreScreen() {
             <Pressable
               key={cat.id}
               style={styles.categoryCard}
-              onPress={() => router.push(`/(tabs)/categories/${cat.id}`)}
+              onPress={() => router.push(`/categories/${cat.id}`)}
             >
               <View style={styles.categoryImageWrapper}>
                 <Image

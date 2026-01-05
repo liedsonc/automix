@@ -1,4 +1,5 @@
 import categories from '@/data/categories.json';
+import { productImages } from '@/constants/images';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -43,6 +44,34 @@ import { SafeAreaView } from 'react-native-safe-area-context';
  const getFinalPrice = (product: Product) => {
   if (!product.discount) return product.price;
   return product.price - (product.price * product.discountValue) / 100;
+};
+
+const getProductImageSource = (product: Product) => {
+  const imageMap: Record<number, keyof typeof productImages> = {
+    1: 'bateria_varta_a7',
+    2: 'brembo_disco',
+    3: 'filtro_oleo_mann',
+    4: 'elf_evolution',
+    5: 'trw_amortecedor',
+    6: 'tyc_farol',
+    7: 'osram_h7_adaptador',
+    8: 'bateria_varta_e44',
+    9: 'bosch_injector',
+    10: 'febi_filtros',
+    11: 'meyle_bracos',
+    12: 'ridex_alternador',
+  };
+
+  const imageKey = imageMap[product.id];
+  if (imageKey && productImages[imageKey]) {
+    return productImages[imageKey];
+  }
+  
+  if (product.image && product.image.startsWith('http')) {
+    return { uri: product.image };
+  }
+  
+  return { uri: product.image };
 };
 
  const normalizeProduct = (product: any): Product => {
@@ -186,7 +215,7 @@ export default function CategoryProductsScreen() {
               onPress={() => router.push(`/product/${product.id}?from=/(tabs)/categories/${categoryId}`)}
             >
               <Image
-                source={{ uri: product.image }}
+                source={getProductImageSource(product)}
                 style={styles.image}
                 resizeMode="contain"
               />
